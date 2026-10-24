@@ -108,6 +108,10 @@ def describe_process(pid: int) -> MonitorProcess | None:
     if not (_PROC / str(pid)).exists() or not _uses_gstreamer(pid):
         return None
     cmdline = _cmdline(pid)
+    if _is_pipelab_infra(cmdline):
+        # Pipelab's own API server and catalog worker map libgstreamer for introspection but run no
+        # pipeline; they are the tool itself, not something to monitor.
+        return None
     env = _environ(pid)
     dot_dir = env.get("GST_DEBUG_DUMP_DOT_DIR") or None
     container = _container(pid)
@@ -152,6 +156,11 @@ def _stats_capability(pid: int, env: dict[str, str]) -> tuple[list[str], str | N
             readable_log = log
     full_stats = bool(tracers) and "stats" in tracers and readable_log is not None
     return tracers, readable_log, full_stats
+
+
+def _is_pipelab_infra(cmdline: str) -> bool:
+    """Pipelab's own API/catalog processes, which use GStreamer only for introspection."""
+    return "pipelab.main" in cmdline or "pipelab.catalog" in cmdline or "uvicorn" in cmdline
 
 
 def discover(include_self: bool = False) -> list[MonitorProcess]:
