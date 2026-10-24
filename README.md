@@ -24,6 +24,29 @@ the result as code for your application.
 - **Export.** gst-launch-1.0, Python (PyGObject), C, Rust (gstreamer-rs) or JSON. The Python and
   Rust exports are small libraries: one builder per component and a type that owns the
   pipeline.
+- **Live monitor.** Reconstruct, read-only, the pipeline running inside another process on the
+  machine — a command-line `gst-launch`, or an app in C, Rust or Python, even in another
+  container — and inspect it as a graph, with element states and negotiated caps.
+
+## Live monitor
+
+The **Live monitor** (top of the pipelines page) lists the GStreamer processes on the machine and
+reconstructs the pipeline of the one you pick, read-only. It never modifies the observed pipeline.
+
+A graph is obtained in one of two ways:
+
+- **No code change (dot-dir):** start the target with `GST_DEBUG_DUMP_DOT_DIR` set, and Pipelab
+  reads the graph GStreamer dumps there — this works for pipelines started from the command line or
+  from C, Rust or Python, and reaches dumps inside other containers.
+- **No restart (gdb):** Pipelab attaches with gdb and asks the live process to serialise its
+  pipelines. This needs no environment variable but needs permission to ptrace the target.
+
+By default the API only sees processes in its own container. To monitor the whole host, run it with
+the host PID namespace (and, for the gdb method, `CAP_SYS_PTRACE`):
+
+```bash
+make up MONITOR=1
+```
 
 ## Quick start
 
@@ -61,3 +84,6 @@ The HTTP API is also described by OpenAPI at `http://localhost:8080/api/docs`.
   change, the value read back shows it.
 - NVIDIA elements depend on the GPU: an element appears only if the card supports it, for
   example AV1 needs an RTX 30 series or newer.
+- The live monitor's gdb method matches plain `GstPipeline` / `gst-launch` pipelines; a pipeline
+  that is an instance of a custom `GstPipeline` subclass is reconstructed only through the dot-dir
+  method. The monitor is read-only; it never changes the observed pipeline.

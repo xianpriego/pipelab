@@ -32,7 +32,9 @@ RUN echo "Server=https://archive.archlinux.org/repos/${ARCH_SNAPSHOT}/\$repo/os/
 FROM gstreamer AS runtime
 
 # Compilers let the test-suite check that exported C code really builds.
-RUN pacman -S --noconfirm --needed gcc pkgconf \
+# gdb lets the live-pipeline monitor force a graph dump out of a non-cooperative GStreamer process
+# (pipelab.monitor): it attaches and calls gst_debug_bin_to_dot_data in the target.
+RUN pacman -S --noconfirm --needed gcc pkgconf gdb \
     && pacman -Scc --noconfirm \
     && rm -rf /var/cache/pacman/pkg/*
 

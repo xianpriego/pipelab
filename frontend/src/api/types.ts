@@ -280,3 +280,58 @@ export interface MediaFile {
   modified: number | string;
   mime: string | null;
 }
+
+// Live-pipeline monitor (read-only): mirrors pipelab.monitor.models.
+export type MonitorMethod = "gdb" | "dot-dir";
+export type ElementState = "null" | "ready" | "paused" | "playing" | "void-pending";
+
+export interface MonitorProcess {
+  pid: number;
+  cmdline: string;
+  process: string;
+  container: string | null;
+  runtime: "native" | "docker" | "podman";
+  user: string;
+  methods: MonitorMethod[];
+  dot_dir: string | null;
+  is_pipelab: boolean;
+}
+
+export interface MonitorNode {
+  id: string;
+  name: string;
+  gtype: string;
+  factory: string;
+  factory_known: boolean;
+  state: ElementState | null;
+  is_bin: boolean;
+  parent: string | null;
+  properties: Record<string, string>;
+  position: { x: number; y: number };
+}
+
+export interface MonitorEdge {
+  id: string;
+  source: string;
+  source_pad: string;
+  target: string;
+  target_pad: string;
+  caps: string | null;
+}
+
+export interface MonitorSource {
+  pid: number | null;
+  cmdline: string;
+  process: string;
+  container: string | null;
+  runtime: "native" | "docker" | "podman";
+  method: MonitorMethod | "signal" | "file";
+  captured_at: string;
+}
+
+export interface MonitorPipeline {
+  name: string;
+  source: MonitorSource;
+  nodes: MonitorNode[];
+  edges: MonitorEdge[];
+}

@@ -1,0 +1,13 @@
+# Let the live-pipeline monitor see and reconstruct GStreamer pipelines of the whole host, not just
+# this container (pipelab.monitor). Start with: make up MONITOR=1
+#
+# - pid: host        makes every host process visible under /proc for discovery.
+# - CAP_SYS_PTRACE   lets the gdb method attach to processes started by other users.
+# - /proc mount      is implied by pid: host; the dot-dir method reads dumps through /proc/<pid>/root.
+#
+# This grants the API broad visibility into host processes; enable it only where that is acceptable.
+services:
+  api:
+    pid: host
+    cap_add:
+      - SYS_PTRACE
