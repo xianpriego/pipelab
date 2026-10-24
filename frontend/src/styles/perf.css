@@ -1,0 +1,18 @@
+/* Performance: queue meters and latency on nodes, the Performance tab. */
+.node-perf { padding: 0 8px 7px; display: flex; flex-direction: column; gap: 3px; }
+.node-perf-text { display: flex; gap: 8px; font-size: 10px; color: var(--text-muted); }
+.node-perf-alert { color: var(--warning); }
+.queue-meter { height: 5px; border-radius: 3px; background: var(--bg-elevated); overflow: hidden; border: 1px solid var(--border); }
+.queue-meter.wide { width: 140px; }
+.queue-meter-fill { height: 100%; background: var(--success); transition: width 0.4s ease; }
+.queue-meter.level-warning .queue-meter-fill { background: var(--warning); }
+.queue-meter.level-error .queue-meter-fill { background: var(--danger); }
+.perf-panel section { display: flex; flex-direction: column; gap: 6px; }
+.perf-panel h4 { margin: 4px 0 0; font-size: 12px; }
+.perf-panel .row label { gap: 6px; font-size: 12px; }
+.perf-insights { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.perf-insights .badge { display: block; white-space: normal; padding: 5px 8px; font-size: 12px; }
+.thread-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; }
+.clickable { cursor: pointer; }
+.data-table tr.clickable:hover td { background: var(--bg-elevated); }
+.text-warning { color: var(--warning); }

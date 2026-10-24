@@ -1,0 +1,70 @@
+.editor { height: 100vh; display: grid; grid-template-columns: 100%; overflow: hidden; }
+.topbar {
+  position: relative; display: flex; align-items: center; gap: 8px; padding: 0 10px;
+  background: var(--bg-panel); border-bottom: 1px solid var(--border); min-width: 0;
+}
+.topbar::after, .projects-header::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px;
+  background: var(--brand-gradient); opacity: 0.85; pointer-events: none;
+}
+.project-name {
+  min-width: 120px; width: 220px; height: 30px; padding: 0 8px;
+  border: 1px solid transparent; border-radius: var(--radius-sm);
+  background: transparent; color: var(--text); font: inherit; font-size: 14px; font-weight: 600;
+}
+.project-name:hover { border-color: var(--border); }
+.project-name:focus { outline: none; border-color: var(--primary); background: var(--bg-input); }
+.topbar-sep { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
+.save-indicator {
+  display: inline-flex; align-items: center; gap: 6px; border: none; background: transparent;
+  color: var(--text-muted); font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap;
+}
+.save-indicator .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); }
+.save-indicator.dirty .dot, .save-indicator.saving .dot { background: var(--warning); }
+.save-indicator.error { color: var(--danger); }
+.save-indicator.error .dot { background: var(--danger); }
+.validation-badge { display: inline-flex; gap: 4px; align-items: center; border: none; background: transparent; cursor: pointer; padding: 0; }
+.run-controls { display: flex; align-items: center; gap: 2px; }
+.run-controls .run-play:not(:disabled) { color: var(--success); }
+.run-controls .run-play:hover:not(:disabled) { background: var(--success-soft); }
+.run-controls .run-stop:not(:disabled), .run-controls .run-kill:not(:disabled) { color: var(--danger); }
+.run-controls .run-stop:hover:not(:disabled), .run-controls .run-kill:hover:not(:disabled) { background: var(--danger-soft); }
+.state-pill {
+  display: inline-flex; align-items: center; gap: 6px; margin-left: 6px; padding: 2px 10px;
+  border-radius: 999px; background: var(--bg-hover); color: var(--text-muted);
+  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
+}
+.state-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-faint); }
+.state-pill.playing { color: var(--success); background: var(--success-soft); }
+.state-pill.playing .dot { background: var(--success); animation: pulse 1.2s infinite; }
+.state-pill.paused { color: var(--warning); background: var(--warning-soft); }
+.state-pill.paused .dot { background: var(--warning); }
+.state-pill.error { color: var(--danger); background: var(--danger-soft); }
+.state-pill.error .dot { background: var(--danger); }
+@keyframes pulse { 50% { opacity: 0.35; } }
+.debug-select { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; margin-left: 8px; }
+.debug-select .select { width: auto; min-height: 26px; padding: 2px 6px; font-size: 12px; }
+
+.editor-main { display: grid; grid-template-columns: 260px minmax(0, 1fr) 340px; min-height: 0; }
+.link-btn {
+  border: none; background: none; padding: 0; color: var(--primary); font: inherit; cursor: pointer;
+}
+.link-btn:hover { text-decoration: underline; }
+.nowrap { white-space: nowrap; }
+.wrap { flex-wrap: wrap; }
+
+.family-badge {
+  padding: 0 6px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.03em; background: var(--bg-hover); color: var(--text-muted); flex: none;
+}
+.family-core, .family-base { color: var(--fam-base); }
+.family-good { color: var(--fam-good); }
+.family-bad { color: var(--fam-bad); }
+.family-ugly { color: var(--fam-ugly); }
+.family-libav { color: var(--fam-libav); }
+.family-rs { color: var(--fam-rs); }
+.gpu-badge {
+  padding: 0 5px; border-radius: 4px; font-size: 9.5px; font-weight: 700; letter-spacing: 0.04em;
+  color: var(--success); background: var(--success-soft); flex: none;
+}
+.restart-hint { color: var(--warning); border-color: var(--warning); background: var(--warning-soft); }

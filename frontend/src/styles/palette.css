@@ -1,0 +1,31 @@
+.palette { display: flex; flex-direction: column; min-height: 0; background: var(--bg-panel); border-right: 1px solid var(--border); }
+.palette-search { display: flex; align-items: center; gap: 6px; padding: 8px; border-bottom: 1px solid var(--border); }
+.palette-filters { padding: 8px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 4px; }
+.palette-list { flex: 1; overflow-y: auto; padding: 4px 6px 12px; }
+.palette-section { padding: 10px 6px 4px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); }
+.palette-item {
+  padding: 5px 8px; margin: 1px 0; border-radius: var(--radius-sm); border-left: 3px solid var(--accent-generic);
+  cursor: grab; user-select: none;
+}
+.palette-item:hover, .palette-item:focus-visible { background: var(--bg-hover); outline: none; }
+.palette-item:active { cursor: grabbing; }
+.palette-item-top { display: flex; align-items: center; gap: 6px; }
+.palette-item-name { font-family: var(--mono); font-size: 12px; font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.palette-item-desc { color: var(--text-muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.palette-more { width: 100%; justify-content: center; margin-top: 6px; }
+.palette-hint { padding: 6px 10px; font-size: 11px; border-top: 1px solid var(--border); }
+.palette-group { margin-top: 1px; }
+.palette-group-header {
+  display: flex; align-items: center; gap: 7px; width: 100%; padding: 6px 6px; border: none; border-radius: var(--radius-sm);
+  background: none; color: var(--text); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; text-align: left;
+}
+.palette-group-header:hover { background: var(--bg-hover); }
+.palette-group-header svg { color: var(--text-faint); flex: none; }
+.palette-group-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--group-accent, var(--accent-generic)); }
+.palette-group-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.palette-group-count {
+  font-size: 10.5px; font-weight: 600; color: var(--text-muted); background: var(--bg-hover);
+  border-radius: 999px; padding: 0 7px;
+}
+.palette-group-items { padding: 0 0 6px 8px; }

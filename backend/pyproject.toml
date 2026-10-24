@@ -1,0 +1,23 @@
+[project]
+name = "pipelab"
+version = "0.1.0"
+description = "Graphical, interactive prototyping of GStreamer pipelines"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-p no:cacheprovider"
+timeout = 120
+markers = [
+    "runtime: tests that spawn real GStreamer pipelines",
+]
+
+[tool.ruff]
+line-length = 110
+# Recipe templates run inside the script namespace (ctx, PASS, Gst… are injected).
+extend-exclude = ["pipelab/scripts/recipes"]
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "BLE", "UP", "SIM", "RUF"]
+ignore = ["E402"]

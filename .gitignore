@@ -1,0 +1,11 @@
+data/
+node_modules/
+dist/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.env
+e2e/test-results/
+e2e/playwright-report/
+.staging/

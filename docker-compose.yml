@@ -1,0 +1,93 @@
+name: pipelab
+
+x-api-image: &api-build
+  context: ./backend
+
+services:
+  api:
+    build: *api-build
+    image: pipelab-api
+    restart: unless-stopped
+    user: "${PIPELAB_UID:-1000}:${PIPELAB_GID:-1000}"
+    environment:
+      PIPELAB_DATA_DIR: /data
+    volumes:
+      - ./data:/data
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        # 1 shows slots, API functions, probe rules and scripts in the editor (hidden by default).
+        VITE_PIPELAB_ADVANCED: ${PIPELAB_ADVANCED:-0}
+    image: pipelab-web
+    restart: unless-stopped
+    ports:
+      - "${PIPELAB_PORT:-8080}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  # --- tooling (docker compose --profile test …) -------------------------
+  api-test:
+    profiles: ["test"]
+    build: *api-build
+    image: pipelab-api
+    user: "${PIPELAB_UID:-1000}:${PIPELAB_GID:-1000}"
+    environment:
+      PIPELAB_TEST_CACHE: /tmp/pipelab-test-cache
+    command: ["sh", "-c", "ruff check . && ruff format --check . && pytest -q"]
+
+  # Compiles and runs the Rust exports (make test-rust); crates are cached in a volume.
+  rust-check:
+    profiles: ["test"]
+    build:
+      context: ./backend
+      dockerfile: docker/rust-check.Dockerfile
+      args:
+        BASE_IMAGE: pipelab-api
+    image: pipelab-rust-check
+    user: "${PIPELAB_UID:-1000}:${PIPELAB_GID:-1000}"
+    environment:
+      PIPELAB_TEST_CACHE: /tmp/pipelab-test-cache
+    volumes:
+      - cargo-cache:/cargo
+    command: ["pytest", "-q", "tests/test_export_dynamic_rust.py"]
+
+  web-test:
+    profiles: ["test"]
+    build:
+      context: ./frontend
+      target: test
+    image: pipelab-web-test
+    command: ["sh", "-c", "npm run lint && npm run typecheck && npm test -- --run && npm run build"]
+
+  e2e:
+    profiles: ["test"]
+    build:
+      context: ./e2e
+    image: pipelab-e2e
+    user: "${PIPELAB_UID:-1000}:${PIPELAB_GID:-1000}"
+    environment:
+      BASE_URL: http://web
+    volumes:
+      - ./e2e/test-results:/e2e/test-results
+    depends_on:
+      web:
+        condition: service_healthy
+
+volumes:
+  cargo-cache:

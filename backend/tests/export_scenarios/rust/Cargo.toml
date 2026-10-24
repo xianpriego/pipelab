@@ -1,0 +1,11 @@
+# Compiles the Rust exports of tests/test_export_dynamic_rust.py (one binary per scenario).
+[package]
+name = "pipelab-export-scenarios"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+gstreamer = "0.25"
+gstreamer-video = "0.25"
+anyhow = "1"

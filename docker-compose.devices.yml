@@ -1,0 +1,12 @@
+# Host devices for capture elements (v4l2src, alsasrc…) and host networking
+# for receiving RTP/RTSP/SRT streams from other machines. Adjust to your host:
+#   docker compose -f docker-compose.yml -f docker-compose.devices.yml up -d   (or: make up DEVICES=1)
+services:
+  api:
+    devices:
+      - /dev/video0:/dev/video0
+    group_add:
+      - video
+    ports:
+      - "5000-5010:5000-5010/udp"   # RTP / SRT / UDP inputs
+      - "8554:8554"                  # RTSP served from a pipeline

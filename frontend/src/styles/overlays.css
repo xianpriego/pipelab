@@ -1,0 +1,76 @@
+.dialog-backdrop {
+  position: fixed; inset: 0; z-index: 50;
+  background: var(--backdrop); backdrop-filter: blur(2px); display: grid; place-items: center; padding: 24px;
+}
+.dialog {
+  width: min(560px, 100%); max-height: calc(100vh - 48px);
+  display: flex; flex-direction: column;
+  background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+.dialog.wide { width: min(1000px, 100%); }
+.dialog-header { display: flex; align-items: center; gap: 8px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.dialog-header h2 { font-size: 15px; }
+.dialog-body { padding: 16px; overflow: auto; display: flex; flex-direction: column; gap: 12px; }
+.dialog-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); }
+
+.toasts { position: fixed; right: 16px; bottom: 16px; z-index: 60; display: flex; flex-direction: column; gap: 8px; width: 380px; }
+.toast {
+  background: var(--bg-elevated); border: 1px solid var(--border); border-left: 4px solid var(--info);
+  border-radius: var(--radius); padding: 10px 12px; box-shadow: var(--shadow);
+  display: flex; flex-direction: column; gap: 6px; animation: toast-in 0.18s ease-out;
+}
+.toast.error { border-left-color: var(--danger); }
+.toast.warning { border-left-color: var(--warning); }
+.toast.success { border-left-color: var(--success); }
+.toast-title { font-weight: 600; display: flex; gap: 8px; align-items: flex-start; }
+.toast-message { color: var(--text-muted); white-space: pre-wrap; word-break: break-word; }
+.toast ul { margin: 0; padding-left: 18px; color: var(--text-muted); }
+.toast-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+@keyframes toast-in { from { transform: translateY(8px); opacity: 0; } }
+
+.code-view {
+  margin: 0; max-height: 60vh; overflow: auto; counter-reset: line;
+  background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 10px 0; font-size: 12px; line-height: 1.55;
+}
+.code-view .line { display: block; padding: 0 12px 0 0; white-space: pre; }
+.code-view .line::before {
+  counter-increment: line; content: counter(line);
+  display: inline-block; width: 40px; margin-right: 12px; padding-right: 8px;
+  text-align: right; color: var(--text-faint); border-right: 1px solid var(--border);
+  user-select: none;
+}
+.tok-keyword { color: #c678dd; }
+.tok-string { color: #98c379; }
+.tok-comment { color: var(--text-faint); font-style: italic; }
+.tok-number { color: #d19a66; }
+:root[data-theme="light"] .tok-keyword { color: #a626a4; }
+:root[data-theme="light"] .tok-string { color: #50a14f; }
+:root[data-theme="light"] .tok-number { color: #986801; }
+
+.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); }
+.tab {
+  height: 32px; padding: 0 12px; border: none; background: transparent; color: var(--text-muted);
+  font: inherit; font-weight: 500; cursor: pointer; border-bottom: 2px solid transparent;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--text); border-bottom-color: var(--primary); }
+
+/* Script editor dialog */
+.script-meta { align-items: flex-end; gap: 16px; }
+.script-meta .grow { flex: 1; }
+.script-issues { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.script-issues .badge { display: block; white-space: pre-wrap; font-family: var(--mono); padding: 4px 8px; }
+.script-editor-layout { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 12px; min-height: 0; }
+.code-editor { height: min(56vh, 520px); border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+.code-editor.loading { display: flex; align-items: center; justify-content: center; }
+.script-help { font-size: 12px; overflow: auto; max-height: min(56vh, 520px); padding-right: 4px; }
+.script-help h4 { margin: 10px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+.script-help h4:first-child { margin-top: 0; }
+.script-help p { margin: 0 0 6px; }
+.script-help dl { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.script-help dt code { color: var(--code-def); }
+.script-help dd { margin: 2px 0 0; color: var(--text-muted); }
+@media (max-width: 760px) { .script-editor-layout { grid-template-columns: 1fr; } }

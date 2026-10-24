@@ -1,0 +1,18 @@
+# NVIDIA GPU access (nvcodec: nvh264enc, nvh265dec, cudaupload…).
+# Requires the NVIDIA driver and the NVIDIA Container Toolkit on the host.
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d   (or: make up GPU=1)
+#   make test GPU=1 also runs the NVIDIA tests.
+x-gpu: &gpu
+  environment:
+    NVIDIA_DRIVER_CAPABILITIES: all
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            count: all
+            capabilities: [gpu, video, compute, utility]
+
+services:
+  api: *gpu
+  api-test: *gpu

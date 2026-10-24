@@ -1,0 +1,23 @@
+# Development mode with hot reload (make dev):
+#   backend: uvicorn --reload over the mounted sources
+#   frontend: Vite dev server with HMR on http://localhost:5173
+services:
+  api:
+    command: ["uvicorn", "pipelab.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    volumes:
+      - ./backend:/app
+      - ./data:/data
+
+  web:
+    build:
+      context: ./frontend
+      target: deps
+    image: pipelab-web-dev
+    command: ["npx", "vite", "--host", "0.0.0.0", "--port", "5173"]
+    environment:
+      PIPELAB_API: http://api:8000
+    ports: !override
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
