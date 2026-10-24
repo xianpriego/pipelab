@@ -60,10 +60,21 @@ monitor tells you how to enable the rest. Previews of the media are not shown â€
 tapping the pipeline, which the monitor never does.
 
 By default the API only sees processes in its own container. To monitor the whole host, run it with
-the host PID namespace (and, for the gdb method, `CAP_SYS_PTRACE`):
+the host PID namespace:
 
 ```bash
 make up MONITOR=1
+```
+
+This is an **elevated, opt-in stack**: reading an unconfined host process's `/proc` from a container
+requires the API to run as root with `CAP_SYS_PTRACE` and with the AppArmor/seccomp confinement
+lifted (`docker-compose.monitor.yml`). Enable it only where that is acceptable; the normal stack
+stays unprivileged and non-root. To keep production untouched, run the monitor as a separate stack:
+
+```bash
+mkdir -p .monitor-data   # pre-create so Docker doesn't make it root-owned
+PIPELAB_PORT=8082 PIPELAB_DATA=./.monitor-data \
+  docker compose -p pipelab-monitor -f docker-compose.yml -f docker-compose.monitor.yml up -d
 ```
 
 ## Quick start
