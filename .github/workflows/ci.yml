@@ -1,0 +1,104 @@
+# Runs the same checks as `make test` on every pull request and on main.
+# Images are built with buildx and their layers cached in GitHub's cache, so the
+# Arch Linux GStreamer image is rebuilt only when its Dockerfile or deps change.
+# GPU tests skip themselves (no NVIDIA card on hosted runners).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (ruff + pytest)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build API image
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          tags: pipelab-api
+          load: true
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,scope=api,mode=max
+      - name: Test
+        run: docker compose --profile test run --rm api-test
+
+  frontend:
+    name: Frontend (lint, typecheck, vitest, build)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build test image
+        uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          target: test
+          tags: pipelab-web-test
+          load: true
+          cache-from: type=gha,scope=web-test
+          cache-to: type=gha,scope=web-test,mode=max
+      - name: Test
+        run: docker compose --profile test run --rm web-test
+
+  e2e:
+    name: End-to-end (Playwright)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free disk space
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+      - uses: docker/setup-buildx-action@v3
+      - name: Build API image
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          tags: pipelab-api
+          load: true
+          cache-from: type=gha,scope=api
+      - name: Build web image
+        uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          tags: pipelab-web
+          load: true
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,scope=web,mode=max
+      - name: Build e2e image
+        uses: docker/build-push-action@v6
+        with:
+          context: e2e
+          tags: pipelab-e2e
+          load: true
+          cache-from: type=gha,scope=e2e
+          cache-to: type=gha,scope=e2e,mode=max
+      - name: Test
+        # The containers run as the runner's user so they can write ./data and the results.
+        run: |
+          mkdir -p data e2e/test-results
+          PIPELAB_UID=$(id -u) PIPELAB_GID=$(id -g) docker compose --profile test run --rm e2e
+      - name: API logs
+        if: failure()
+        run: docker compose logs api web
+      - name: Upload Playwright results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: e2e/test-results
+          retention-days: 7

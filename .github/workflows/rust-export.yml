@@ -1,0 +1,55 @@
+# Compiles and runs the Rust code exported by Pipelab (`make test-rust`).
+# Heavy (Rust toolchain + gstreamer-rs crates), so it only runs when the
+# exporters change, or by hand.
+name: Rust export
+
+on:
+  pull_request:
+    paths:
+      - "backend/pipelab/export/**"
+      - "backend/tests/test_export_rust.py"
+      - "backend/tests/export_scenarios/**"
+      - "backend/docker/rust-check.Dockerfile"
+      - "backend/Dockerfile"
+  workflow_dispatch:
+
+concurrency:
+  group: rust-export-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  rust-check:
+    name: Rust export compiles and runs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free disk space
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+      - uses: docker/setup-buildx-action@v3
+      - name: Build API image
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          tags: pipelab-api
+          load: true
+          cache-from: type=gha,scope=api
+      # The base image only exists in the local docker daemon, so this one is
+      # built with the daemon's own builder, not buildx's container driver.
+      - name: Build rust-check image
+        run: docker buildx build --builder default -t pipelab-rust-check -f backend/docker/rust-check.Dockerfile backend
+      - name: Cache cargo registry and builds
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/cargo
+          key: cargo-${{ hashFiles('backend/pipelab/export/rust_*.py') }}
+          restore-keys: cargo-
+      - name: Test
+        run: |
+          mkdir -p "$RUNNER_TEMP/cargo/target"
+          docker run --rm -u "$(id -u):$(id -g)" -v "$RUNNER_TEMP/cargo:/cargo" \
+            -e PIPELAB_TEST_CACHE=/tmp/pipelab-test-cache \
+            pipelab-rust-check pytest -q tests/test_export_rust.py

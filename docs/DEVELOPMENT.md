@@ -90,3 +90,15 @@ PIPELAB_DATA=./.staging/data PIPELAB_PORT=8081 docker compose -p pipelab-staging
 - Small modules with one responsibility, docstrings that say why, and no dead code.
 - Python: ruff (lint and format, line length 110). TypeScript: eslint and `tsc --strict`.
 - Commits end with the tests green: `make test` (add `GPU=1` on a GPU machine).
+- `main` is protected: work on a branch and open a pull request. CI must pass before merging.
+
+## Continuous integration
+
+GitHub Actions runs the same suites as `make test` on every pull request and on `main`
+(`.github/workflows/ci.yml`): backend, frontend and end-to-end, each in its own job. Docker
+layers are cached in GitHub's cache, so the GStreamer image is only rebuilt when
+`backend/Dockerfile` or the Python requirements change. Hosted runners have no GPU, so the
+NVIDIA tests are skipped there. Run `make test GPU=1` locally when you touch GPU code.
+
+`.github/workflows/rust-export.yml` runs `make test-rust`. It only runs when the exporters change,
+or when started by hand from the Actions tab, because building the crates takes a while.
