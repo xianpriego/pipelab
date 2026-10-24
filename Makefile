@@ -4,6 +4,7 @@
 ##   make dev           hot-reload mode (UI on http://localhost:5173)
 ##   make test          backend, frontend and browser end-to-end suites (and linters)
 ##   make test-rust     compile and run the Rust exports (cargo, crates cached in a volume)
+##   make up MONITOR=1  same, able to monitor live pipelines of the whole host (host PID namespace)
 ##   make docs GPU=1    regenerate the user manual screenshots (separate stack, empty data)
 
 export PIPELAB_UID ?= $(shell id -u)
@@ -15,6 +16,9 @@ COMPOSE_FILES += -f docker-compose.gpu.yml
 endif
 ifeq ($(DEVICES),1)
 COMPOSE_FILES += -f docker-compose.devices.yml
+endif
+ifeq ($(MONITOR),1)
+COMPOSE_FILES += -f docker-compose.monitor.yml
 endif
 ifeq ($(DEV),1)
 COMPOSE_FILES += -f docker-compose.dev.yml

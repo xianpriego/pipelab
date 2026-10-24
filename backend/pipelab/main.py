@@ -10,7 +10,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 
-from pipelab.api import catalog, components, graph, media, projects, runtime
+from pipelab.api import catalog, components, graph, media, monitor, projects, runtime
 from pipelab.api.services import Services
 from pipelab.catalog.service import CatalogNotReady
 from pipelab.components.grouping import GroupingError
@@ -69,7 +69,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         openapi_url="/api/openapi.json",
     )
     app.add_middleware(GZipMiddleware, minimum_size=2048)
-    for module in (catalog, components, projects, graph, runtime, media):
+    for module in (catalog, components, projects, graph, runtime, media, monitor):
         app.include_router(module.router, prefix="/api")
     _install_error_handlers(app)
     return app

@@ -59,6 +59,9 @@ export function ProjectsPage() {
           <div className="muted">Prototype GStreamer pipelines visually, run them and export the skeleton.</div>
         </div>
         <span className="spacer" />
+        <button className="btn" onClick={() => navigate("/monitor")} title="Inspect pipelines running live on this machine">
+          <Icon name="eye" /> Live monitor
+        </button>
         <button className="btn" onClick={() => setDialog("import")}>
           <Icon name="import" /> Import
         </button>

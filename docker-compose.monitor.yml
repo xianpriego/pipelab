@@ -1,0 +1,24 @@
+# Let the live-pipeline monitor see and reconstruct GStreamer pipelines of the whole host, not just
+# this container (pipelab.monitor). Start with: make up MONITOR=1
+#
+# - pid: host        makes every host process visible under /proc for discovery.
+# - CAP_SYS_PTRACE   lets us read other processes' /proc (maps, environ) and attach with gdb.
+# - user: "0:0"      the API normally runs unprivileged, but a non-root process does not get the
+#                    added capability in its *effective* set, so it cannot read the /proc of host
+#                    processes owned by others. Running this opt-in stack as root makes the
+#                    capability effective. The dot-dir method reads dumps through /proc/<pid>/root.
+#
+# This grants the API broad, root-level visibility into host processes; enable it only where that is
+# acceptable. It is a separate, explicit mode — the normal stack stays unprivileged and non-root.
+services:
+  api:
+    pid: host
+    user: "0:0"
+    cap_add:
+      - SYS_PTRACE
+    # The docker-default AppArmor profile only lets a container read/ptrace peers under the same
+    # profile, which blocks reading unconfined host processes' /proc even as root; seccomp-unconfined
+    # keeps ptrace / process_vm_readv available for the gdb method. Needed to monitor host processes.
+    security_opt:
+      - apparmor=unconfined
+      - seccomp=unconfined

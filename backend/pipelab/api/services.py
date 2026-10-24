@@ -13,6 +13,7 @@ from pipelab.components.overlay import overlay_catalog
 from pipelab.components.starters import StarterComponents
 from pipelab.config import Settings
 from pipelab.graph.analyzer import Analyzer
+from pipelab.monitor.live import LiveMonitor
 from pipelab.runtime.session import RuntimeManager
 from pipelab.storage.components import ComponentStore
 from pipelab.storage.media import MediaStore
@@ -28,6 +29,7 @@ class Services:
         self.media = MediaStore(settings.media_dir)
         self.runtime = RuntimeManager(settings.media_dir)
         self.components = ComponentStore(settings.components_dir)
+        self.live_monitor = LiveMonitor()
         self._lock = threading.Lock()
         self._analyzer: Analyzer | None = None
         self._analyzer_key: tuple[int, int] | None = None

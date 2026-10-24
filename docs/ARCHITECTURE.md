@@ -19,9 +19,10 @@ api (FastAPI + PyGObject)                                     container "api"
    ├── importer     gst-launch-1.0 description → graph
    ├── export       gst-launch / Python / C / Rust / JSON generators
    ├── storage      projects, components and media under /data
-   └── runtime      one worker *process* per running project
-          └── worker   builds the Gst.Pipeline and streams bus messages, statistics,
-                       previews and probes back through a framed stdout protocol
+   ├── runtime      one worker *process* per running project
+   │      └── worker   builds the Gst.Pipeline and streams bus messages, statistics,
+   │                   previews and probes back through a framed stdout protocol
+   └── monitor      read-only reconstruction of *other* processes' live pipelines
 ```
 
 A pipeline never runs inside the API process, so a crashing plugin only kills its worker. The
@@ -190,6 +191,9 @@ A component is a reusable sub-graph in a global library (`/data/components/<id>.
 | WS | `/projects/{id}/runtime/ws` | runtime events and binary previews (closed with 4404 for unknown projects) |
 | GET, POST | `/media` | list / upload (multipart `file`) |
 | GET, DELETE | `/media/{path}` | serve (with HTTP range support) / delete |
+| GET | `/monitor/processes` | `{processes: MonitorProcess[]}` — GStreamer processes visible to the API |
+| POST | `/monitor/snapshot` | `{pid, method}` → `MonitorPipeline` (read-only reconstruction) |
+| GET | `/monitor/live?pid=` | live `stats` over the interval since the last call, or `{available: false, reason}` |
 
 Response details:
 
@@ -263,6 +267,44 @@ Display sinks (autovideosink, xvimagesink, glimagesink…) are replaced by an un
 to 15 fps. Audio sinks are replaced by a PCM `appsink`. The element keeps its name, so bus
 messages still map to the node, and since the replacement accepts any caps, upstream
 negotiation does not change.
+
+## Live monitor (`backend/pipelab/monitor/`)
+
+Reconstructs, read-only, the pipeline running inside *another* process on the machine — a
+command-line `gst-launch`, or an app written in C, Rust or Python, possibly in another container —
+so it can be inspected as a graph. It never modifies the observed pipeline.
+
+- `discover.py` scans `/proc` for processes with `libgstreamer-1.0.so` mapped and reports each one's
+  command line, container (from `cgroup`), owner, and whether it was started with
+  `GST_DEBUG_DUMP_DOT_DIR`. Only processes in the API's PID namespace are visible, so to monitor the
+  whole host the API is run with `--pid=host` and `/proc` (and `CAP_SYS_PTRACE` for the gdb method).
+- `dump.py` obtains a GraphViz `.dot` of the live pipeline by one of two methods:
+  - **dot-dir** — read the newest dump the process has already written to its
+    `GST_DEBUG_DUMP_DOT_DIR`. The directory is resolved through `/proc/<pid>/root`, so dumps inside
+    another container are reachable. No cooperation beyond that one environment variable.
+  - **gdb** (`gdb_dump.py`) — attach with gdb and call `gst_debug_bin_to_dot_data` (the same
+    function GStreamer uses for the dumps) on every live top-level `GstPipeline`. The pipelines are
+    found by taking the `GstPipeline` class pointer once and scanning the heap for instances that
+    begin with it; only the few hits are validated and dumped. Needs ptrace permission. Matches
+    plain `GstPipeline`/`gst-launch` pipelines, not custom `GstPipeline` subclasses.
+- `dot_parse.py` parses the `.dot` back into elements (type, name, state, properties, bin nesting),
+  pads (name and direction) and links (pad names and negotiated caps). It is pure and defensive.
+- `graph_map.py` maps the parsed pipeline onto the read-only `monitor/models.py` models, resolving
+  each element's GObject type to a factory against this machine's catalog (so the monitor reuses the
+  editor's node rendering) and placing nodes with the editor's `auto_layout`.
+- **Live statistics** (`live.py`, `tracer_parse.py`): when the process was launched with the
+  GStreamer tracers (`GST_TRACERS="stats;latency"` + `GST_DEBUG=GST_TRACER:7` +
+  `GST_DEBUG_FILE`), `discover.py` reports `full_stats`, and `LiveMonitor` tails that log (through
+  `/proc/<pid>/root`). Each `/monitor/live` poll aggregates the records written since the previous
+  poll into the same `stats` shape the editor streams — per-link `buffers/bytes/fps/bitrate`,
+  per-element latency, end-to-end latency, and the streaming threads with their CPU (read from
+  `/proc/<pid>/task/<tid>`). The poll interval is the measurement window. Tracers cannot be enabled
+  after a process has started, so a pipeline that was not launched with them shows structure only.
+
+`MonitorPipeline` = `{name, source, nodes: MonitorNode[], edges: MonitorEdge[]}`. A `MonitorNode` is
+`{id, name, gtype, factory, factory_known, state, is_bin, parent, properties, position}` and a
+`MonitorEdge` is `{id, source, source_pad, target, target_pad, caps}`. `source` describes where the
+snapshot came from (`pid`, `cmdline`, `container`, `method`, `captured_at`).
 
 ## Frontend (`frontend/src`)
 

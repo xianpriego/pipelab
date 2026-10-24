@@ -12,6 +12,7 @@ import "./styles/inspector.css";
 import "./styles/dock.css";
 import "./styles/components.css";
 import "./styles/perf.css";
+import "./styles/monitor.css";
 import { App } from "./App";
 
 createRoot(document.getElementById("root") as HTMLElement).render(

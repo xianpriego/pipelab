@@ -3,9 +3,9 @@
 import type { ComponentBundle, ComponentDef, ComponentUsage, GroupResult, StarterInfo } from "./components";
 import type {
   ElementInfo, ElementSummary, ExportFormat, ExportResult, Fix, Graph, GraphEdge, Health,
-  ImportResult, Issue, LinkCheckResult, LiveProperties, MediaFile, Project, ProjectCreate,
-  ProbeResult, ProjectSummary, ProjectUpdate, PropertyChange, PropertyResult, RuntimeStatus,
-  TapResult, TemplateInfo,
+  ImportResult, Issue, LinkCheckResult, LiveProperties, MediaFile, MonitorPipeline, MonitorProcess,
+  MonitorStats, Project, ProjectCreate, ProbeResult, ProjectSummary, ProjectUpdate, PropertyChange,
+  PropertyResult, RuntimeStatus, TapResult, TemplateInfo,
 } from "./types";
 
 export const API_BASE = "/api";
@@ -142,6 +142,12 @@ export const api = {
   },
   deleteMedia: (path: string) => request<void>(`/media/${path.split("/").map(enc).join("/")}`, { method: "DELETE" }),
   mediaUrl: (path: string) => `${API_BASE}/media/${path.split("/").map(enc).join("/")}`,
+
+  monitorProcesses: async () =>
+    (await request<{ processes: MonitorProcess[] }>("/monitor/processes")).processes,
+  monitorSnapshot: (pid: number, method: "auto" | "gdb" | "dot-dir" = "auto") =>
+    request<MonitorPipeline>("/monitor/snapshot", json({ pid, method })),
+  monitorLive: (pid: number) => request<MonitorStats>(`/monitor/live?pid=${pid}`),
 };
 
 export function errorMessage(error: unknown): string {
