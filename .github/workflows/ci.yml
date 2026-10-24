@@ -1,11 +1,10 @@
-# Runs the same checks as `make test` on every pull request and on main.
+# Runs the same checks as `make test` on every push to main.
 # Images are built with buildx and their layers cached in GitHub's cache, so the
 # Arch Linux GStreamer image is rebuilt only when its Dockerfile or deps change.
 # GPU tests skip themselves (no NVIDIA card on hosted runners).
 name: CI
 
 on:
-  pull_request:
   push:
     branches: [main]
   workflow_dispatch:

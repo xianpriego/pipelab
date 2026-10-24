@@ -1,10 +1,11 @@
 # Compiles and runs the Rust code exported by Pipelab (`make test-rust`).
-# Heavy (Rust toolchain + gstreamer-rs crates), so it only runs when the
-# exporters change, or by hand.
+# Heavy (Rust toolchain + gstreamer-rs crates), so it only runs on pushes to
+# main that change the exporters, or by hand.
 name: Rust export
 
 on:
-  pull_request:
+  push:
+    branches: [main]
     paths:
       - "backend/pipelab/export/**"
       - "backend/tests/test_export_rust.py"
