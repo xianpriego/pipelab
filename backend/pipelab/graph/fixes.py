@@ -10,7 +10,6 @@ from pipelab.graph.editing import (
     make_room,
     positions_between,
     remove_edge,
-    retarget_edge_scripts,
 )
 from pipelab.graph.models import Fix, FixElement, Graph, Node, PadRef, Position
 from pipelab.graph.pads import pick_pad, resolve_pad_name
@@ -78,7 +77,6 @@ def _insert_on_edge(analyzer: Analyzer, graph: Graph, fix: Fix) -> None:
             PadRef(node_id=edge.target, pad=edge.target_pad),
             fix.elements,
         )
-        retarget_edge_scripts(graph, edge)
 
 
 def _connect_via(analyzer: Analyzer, graph: Graph, fix: Fix) -> None:
@@ -115,9 +113,6 @@ def _insert_tee(analyzer: Analyzer, graph: Graph, fix: Fix) -> None:
     branches.append(fix.target)
     tee = add_node(graph, "tee", Position(x=source.position.x + 220, y=source.position.y))
     add_edge(graph, source.id, fix.source.pad, tee.id, "sink")
-    for edge in existing:
-        if edge is not None:
-            retarget_edge_scripts(graph, edge)
     for index, branch in enumerate(branches):
         target = _node(graph, branch.node_id)
         tee_pad = PadRef(node_id=tee.id, pad=f"src_{index}")

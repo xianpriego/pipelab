@@ -78,9 +78,8 @@ def _pad_property_issues(ctx: RuleContext, node: Node) -> list[Issue]:
     issues = []
     for pad, properties in node.pad_properties.items():
         template = ctx.analyzer.catalog.pad_template(node.factory, pad)
-        known = {p.name: p for p in template.properties} if template else {}
         for name, value in properties.items():
-            prop = known.get(name)
+            prop = template.property(name) if template else None
             error = f"pad '{pad}' has no property '{name}'" if prop is None else check_value(prop, value)
             if error:
                 issues.append(
@@ -97,7 +96,7 @@ def _pad_property_issues(ctx: RuleContext, node: Node) -> list[Issue]:
 
 def properties(ctx: RuleContext) -> list[Issue]:
     issues = []
-    for node, element in ctx.nodes_with(lambda _n, _e: True):
+    for node, element in ctx.known_nodes():
         issues += _property_issues(node, element)
         issues += _pad_property_issues(ctx, node)
     return issues

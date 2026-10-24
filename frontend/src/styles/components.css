@@ -1,0 +1,63 @@
+/* Components (macro blocks): instances, ports, parameters, scopes and starters. */
+
+:root,
+:root[data-theme="dark"] {
+  --accent-component: #b07cf0;
+  --component-soft: rgba(176, 124, 240, 0.16);
+}
+:root[data-theme="light"] {
+  --accent-component: #7b3fd0;
+  --component-soft: rgba(123, 63, 208, 0.1);
+}
+
+/* --- Shared form bits ------------------------------------------------------------ */
+.field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-muted); min-width: 120px; }
+.field .input, .field .select, .field .textarea { color: var(--text); }
+.grow { flex: 1; min-width: 0; }
+.form-grid { display: flex; flex-direction: column; gap: 12px; }
+.form-grid p { margin: 0; }
+
+/* --- Components ------------------------------------------------------------------ */
+.element-node.component-node {
+  border-top-color: var(--accent-component); border-style: solid;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28), inset 0 0 0 1px var(--component-soft);
+}
+.element-node.component-node .element-node-header { background: linear-gradient(180deg, var(--component-soft), transparent); }
+.component-glyph { color: var(--accent-component); font-size: 13px; line-height: 1; }
+.family-component { color: var(--accent-component); }
+.port-marker {
+  position: absolute; top: 2px; font: 600 10px/16px var(--mono); padding: 0 5px; border-radius: 8px; white-space: nowrap;
+  color: #fff; background: var(--accent-component); pointer-events: none; z-index: 2;
+}
+.pad-row.sink .port-marker { right: calc(100% + 10px); }
+.pad-row.src .port-marker { left: calc(100% + 10px); }
+.pad-row.pad-port .pad-handle { background: var(--accent-component) !important; border-color: var(--accent-component) !important; }
+.port-marker-chip { font: 600 11px var(--mono); color: var(--accent-component); }
+.port-dir { font: 700 10px var(--mono); text-transform: uppercase; padding: 1px 5px; border-radius: 4px; background: var(--component-soft); color: var(--accent-component); }
+.port-row { gap: 6px; }
+.port-row .input { width: 110px; }
+.param-chip { font-size: 10.5px; padding: 0 5px; border-radius: 8px; background: var(--component-soft); color: var(--accent-component); }
+.expose-btn { opacity: 0.55; }
+.prop-row:hover .expose-btn { opacity: 1; }
+.param-card { display: flex; flex-direction: column; gap: 4px; padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-elevated); margin-bottom: 6px; }
+.param-card .row .input:first-child { width: 120px; }
+.target-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; font-size: 11.5px; }
+.instance-section p { margin: 4px 0; }
+.component-panel .field { margin-bottom: 8px; }
+
+.scope-bar {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 6; display: flex; flex-direction: column;
+  background: color-mix(in srgb, var(--bg-panel) 94%, transparent); border-bottom: 2px solid var(--accent-component);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+}
+.scope-crumbs { padding: 6px 10px; gap: 6px; font-size: 13px; }
+.scope-crumbs strong { color: var(--accent-component); }
+.scope-warning { padding: 2px 12px 6px; font-size: 11.5px; color: var(--warning); }
+
+/* --- Palette ---------------------------------------------------------------------- */
+.palette-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; padding: 4px 8px; }
+.starter-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 60vh; overflow: auto; }
+.starter-row { display: flex; align-items: flex-start; gap: 12px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-elevated); }
+.starter-text { flex: 1; min-width: 0; }
+.starter-text p { margin: 4px 0 0; }
+.starter-text .badge { display: inline-block; white-space: normal; }

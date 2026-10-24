@@ -39,3 +39,9 @@ def graph(
         for i, (s, sp, t, tp) in enumerate(edges)
     ]
     return Graph(nodes=built, edges=links)
+
+
+def named_links(graph: Graph) -> list[tuple[str, str, str, str]]:
+    """Edges as ``(source name, source pad, target name, target pad)``."""
+    name = {n.id: n.name for n in graph.nodes}
+    return [(name[e.source], e.source_pad, name[e.target], e.target_pad) for e in graph.edges]

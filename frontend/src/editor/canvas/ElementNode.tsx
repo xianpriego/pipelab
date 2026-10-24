@@ -9,7 +9,7 @@ import { PadHandle, type PadChoice } from "./PadHandle";
 import type { ElementFlowNode } from "./toFlow";
 
 function ElementNodeView({ id, data, selected }: NodeProps<ElementFlowNode>) {
-  const { node, summary, handles, severity, alert, preview, selector, pendingPad, scripts, probes, ports, perf } = data;
+  const { node, summary, handles, severity, alert, preview, selector, ports, perf } = data;
   const updateInternals = useUpdateNodeInternals();
   const signature = [...handles.sinks, ...handles.srcs].map((h) => h.id).join("|");
 
@@ -21,7 +21,6 @@ function ElementNodeView({ id, data, selected }: NodeProps<ElementFlowNode>) {
     if (!selector || spec.direction !== selector.direction || !selector.pads.includes(spec.id)) return undefined;
     return {
       active: selector.active === spec.id,
-      pending: pendingPad === spec.id,
       onSelect: () => void selectActivePad(node.id, spec.id),
     };
   };
@@ -39,14 +38,6 @@ function ElementNodeView({ id, data, selected }: NodeProps<ElementFlowNode>) {
           <span className="element-node-icon" title={`Previewed in the browser (${preview})`}>
             <Icon name={preview === "video" ? "eye" : "speaker"} size={13} />
           </span>
-        ) : null}
-        {scripts ? (
-          <span className={`script-badge${scripts.enabled ? "" : " disabled"}`}
-            title={`Probe scripts: ${scripts.names.join(", ")}${scripts.enabled ? "" : " (disabled)"}`}>ƒ</span>
-        ) : null}
-        {probes ? (
-          <span className={`probe-badge${probes.enabled ? "" : " disabled"}`} data-testid="probe-badge"
-            title={`No-code probes: ${probes.names.join(", ")}${probes.enabled ? "" : " (disabled)"}`}>◉</span>
         ) : null}
         {summary ? <span className={`family-badge family-${summary.family}`}>{summary.family}</span> : null}
       </div>

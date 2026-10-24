@@ -2,26 +2,29 @@
 
 from __future__ import annotations
 
+import re
+
 from pipelab.components.models import Component
 from pipelab.graph.analyzer import Analyzer
 from pipelab.graph.models import Issue
 from pipelab.graph.rules.base import issue
-from pipelab.graph.rules.dynamic import IDENTIFIER
 from pipelab.graph.validate import validate_graph
 
 _PIPELINE_ONLY = {"no-source", "no-sink"}
+# Parameters become keyword arguments / struct fields in exported code.
+_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
 def _is_port_issue(found: Issue, component: Component) -> bool:
     """Unlinked-pad issues for pads that are exposed as ports are expected."""
     if found.rule != "unlinked-pad":
         return False
-    for port in component.ports:
-        if found.id.endswith(f"{port.node_id}.{port.pad}"):
-            return True
-        if found.node_ids == [port.node_id] and found.id.endswith((".inputs", ".outputs")):
-            return True
-    return False
+    exposed = {
+        f"unlinked-pad:{port.node_id}.{suffix}"
+        for port in component.ports
+        for suffix in (port.pad, "inputs", "outputs")
+    }
+    return found.id in exposed
 
 
 def _port_issues(analyzer: Analyzer, component: Component) -> list[Issue]:
@@ -56,7 +59,7 @@ def _port_issues(analyzer: Analyzer, component: Component) -> list[Issue]:
 def _parameter_issues(analyzer: Analyzer, component: Component) -> list[Issue]:
     issues, names = [], set()
     for param in component.parameters:
-        if not IDENTIFIER.match(param.name.replace("-", "_")) or param.name in names:
+        if not _IDENTIFIER.match(param.name.replace("-", "_")) or param.name in names:
             issues.append(
                 issue(
                     "component",

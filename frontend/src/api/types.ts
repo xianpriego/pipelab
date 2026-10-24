@@ -1,7 +1,5 @@
 // TypeScript mirror of the backend pydantic models (docs/ARCHITECTURE.md).
 
-import type { ApiFunction, ProbeRuleSet, Slot } from "./dynamic";
-
 export type PropertyValue = string | number | boolean;
 
 export type PropertyType =
@@ -102,41 +100,9 @@ export interface GraphEdge {
   target_pad: string;
 }
 
-export interface ScriptTarget {
-  kind: "node" | "edge";
-  id: string;
-}
-
-/** User Python attached to an element or a link (probe script). */
-export interface ProbeScript {
-  id: string;
-  name: string;
-  enabled: boolean;
-  target: ScriptTarget;
-  code: string;
-}
-
-export interface ScriptRecipe {
-  id: string;
-  name: string;
-  description: string;
-  target_kind: ScriptTarget["kind"];
-  /** Factories the recipe is meant for; empty = any element/link. */
-  factories: string[];
-  code: string;
-}
-
 export interface Graph {
   nodes: GraphNode[];
   edges: GraphEdge[];
-  /** Probe scripts; older projects omit it. */
-  scripts?: ProbeScript[];
-  /** No-code probe rule sets (docs/DYNAMIC.md §4). */
-  probes?: ProbeRuleSet[];
-  /** N instances of a component linked to the static graph (§2). */
-  slots?: Slot[];
-  /** Methods the pipeline exposes to the software owning it (§3). */
-  functions?: ApiFunction[];
 }
 
 export type Severity = "error" | "warning" | "info";
@@ -299,8 +265,6 @@ export interface PropertyResult {
   ok: boolean;
   value?: PropertyValue | null;
   error?: string | null;
-  /** A script took the change over; the effective value arrives later as a runtime property event. */
-  deferred?: boolean;
 }
 
 export interface TapResult {
@@ -309,7 +273,6 @@ export interface TapResult {
 }
 
 export type ProbeResult = TapResult;
-export type TriggerResult = TapResult;
 
 export interface MediaFile {
   path: string;

@@ -14,7 +14,7 @@ from __future__ import annotations
 import re
 
 from pipelab.catalog.models import ElementInfo
-from pipelab.catalog.store import Catalog, parse_caps
+from pipelab.catalog.store import Catalog
 from pipelab.graph.models import Graph, Node
 from pipelab.gst import Gst
 
@@ -38,6 +38,16 @@ PASSTHROUGH = {
 }
 CAPS_FILTERS = {"capsfilter"}
 QUEUE_LIKE = {"queue", "queue2", "multiqueue", "ts-queue"}
+# Adapt raw formats, sizes or rates (and so make neighbouring links negotiable).
+CONVERTERS = {
+    "videoconvert",
+    "videoconvertscale",
+    "videoscale",
+    "videorate",
+    "audioconvert",
+    "audioresample",
+    "audiorate",
+}
 _INDEXED = {"multiqueue"}
 _INDEX = re.compile(r"_(\d+)$")
 
@@ -131,11 +141,3 @@ class CapsFlow:
         if not edges:
             return None
         return _union([self.output_caps(e.source, e.source_pad) for e in edges])
-
-
-def caps_to_string(caps: Gst.Caps, limit: int = 4000) -> str:
-    text = caps.to_string()
-    return text if len(text) <= limit else text[:limit] + "…"
-
-
-__all__ = ["CAPS_FILTERS", "PASSTHROUGH", "QUEUE_LIKE", "CapsFlow", "caps_to_string", "parse_caps"]

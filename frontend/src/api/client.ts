@@ -1,14 +1,12 @@
 // Typed HTTP client of the Pipelab API.
 
+import type { ComponentBundle, ComponentDef, ComponentUsage, GroupResult, StarterInfo } from "./components";
 import type {
   ElementInfo, ElementSummary, ExportFormat, ExportResult, Fix, Graph, GraphEdge, Health,
   ImportResult, Issue, LinkCheckResult, LiveProperties, MediaFile, Project, ProjectCreate,
-  ProbeResult, ProjectSummary, ProjectUpdate, PropertyChange, PropertyResult, PropertyValue, RuntimeStatus,
-  ScriptRecipe, TapResult, TemplateInfo, TriggerResult,
+  ProbeResult, ProjectSummary, ProjectUpdate, PropertyChange, PropertyResult, RuntimeStatus,
+  TapResult, TemplateInfo,
 } from "./types";
-import type {
-  CallResult, ComponentBundle, ComponentDef, ComponentUsage, GroupResult, StarterInfo, InstancesResult, ProbeSchema, Value,
-} from "./dynamic";
 
 export const API_BASE = "/api";
 
@@ -109,15 +107,11 @@ export const api = {
     request<TapResult>(`${runtime(id)}/tap`, json({ edge_id: edgeId, enabled })),
   runtimeProbe: (id: string, edgeId: string, enabled: boolean) =>
     request<ProbeResult>(`${runtime(id)}/probe`, json({ edge_id: edgeId, enabled })),
-  runtimeTrigger: (id: string, scriptId: string, value: PropertyValue | null) =>
-    request<TriggerResult>(`${runtime(id)}/trigger`, json({ script_id: scriptId, value })),
-  scriptRecipes: () => request<ScriptRecipe[]>("/scripts/recipes"),
-  probeSchema: () => request<ProbeSchema>("/probes/schema"),
-  runtimeCall: (id: string, fn: string, args: Record<string, Value>) =>
-    request<CallResult>(`${runtime(id)}/call`, json({ function: fn, args })),
-  runtimeSignal: (id: string, probe: string, name: string, value: Value) =>
-    request<TriggerResult>(`${runtime(id)}/signal`, json({ probe, name, value })),
-  runtimeInstances: (id: string) => request<InstancesResult>(`${runtime(id)}/instances`),
+  runtimeProperties: (id: string, nodeId: string) =>
+    request<LiveProperties>(`${runtime(id)}/properties/${enc(nodeId)}`),
+  runtimeDotUrl: (id: string) => `${API_BASE}${runtime(id)}/dot?t=${Date.now()}`,
+  runtimeSocketUrl: (id: string, location: Pick<Location, "protocol" | "host"> = window.location) =>
+    `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}${API_BASE}${runtime(id)}/ws`,
 
   listComponents: () => request<ComponentDef[]>("/components"),
   getComponent: (id: string) => request<ComponentDef>(`/components/${enc(id)}`),
@@ -139,11 +133,6 @@ export const api = {
     request<GroupResult>("/components/from-selection", json({ graph, node_ids: nodeIds, id, name })),
   expandInstance: async (graph: Graph, nodeId: string) =>
     (await request<{ graph: Graph }>("/graph/expand", json({ graph, node_id: nodeId }))).graph,
-  runtimeProperties: (id: string, nodeId: string) =>
-    request<LiveProperties>(`${runtime(id)}/properties/${enc(nodeId)}`),
-  runtimeDotUrl: (id: string) => `${API_BASE}${runtime(id)}/dot?t=${Date.now()}`,
-  runtimeSocketUrl: (id: string, location: Pick<Location, "protocol" | "host"> = window.location) =>
-    `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}${API_BASE}${runtime(id)}/ws`,
 
   listMedia: async () => (await request<{ files: MediaFile[] }>("/media")).files,
   uploadMedia: (file: File) => {

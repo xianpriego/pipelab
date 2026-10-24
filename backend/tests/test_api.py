@@ -1,13 +1,4 @@
-import pytest
-
-from tests.api_client import api_client
 from tests.helpers import chain
-
-
-@pytest.fixture(scope="module")
-def client(catalog, tmp_path_factory):
-    with api_client(tmp_path_factory.mktemp("api")) as client:
-        yield client
 
 
 def test_health_and_catalog(client):

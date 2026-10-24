@@ -57,20 +57,3 @@
 }
 .tab:hover { color: var(--text); }
 .tab.active { color: var(--text); border-bottom-color: var(--primary); }
-
-/* Script editor dialog */
-.script-meta { align-items: flex-end; gap: 16px; }
-.script-meta .grow { flex: 1; }
-.script-issues { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
-.script-issues .badge { display: block; white-space: pre-wrap; font-family: var(--mono); padding: 4px 8px; }
-.script-editor-layout { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 12px; min-height: 0; }
-.code-editor { height: min(56vh, 520px); border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
-.code-editor.loading { display: flex; align-items: center; justify-content: center; }
-.script-help { font-size: 12px; overflow: auto; max-height: min(56vh, 520px); padding-right: 4px; }
-.script-help h4 { margin: 10px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
-.script-help h4:first-child { margin-top: 0; }
-.script-help p { margin: 0 0 6px; }
-.script-help dl { margin: 0; display: flex; flex-direction: column; gap: 6px; }
-.script-help dt code { color: var(--code-def); }
-.script-help dd { margin: 2px 0 0; color: var(--text-muted); }
-@media (max-width: 760px) { .script-editor-layout { grid-template-columns: 1fr; } }

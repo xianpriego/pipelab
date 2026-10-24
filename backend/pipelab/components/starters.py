@@ -10,12 +10,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from pydantic import BaseModel, Field
-
 from pipelab.catalog.store import Catalog
 from pipelab.components.models import Component, ComponentParam, ComponentPort, ParamTarget
 from pipelab.graph.models import Graph
 from pipelab.importer.gst_launch import import_gst_launch
+from pipelab.templates.info import StarterInfo, starter_info
 
 _X264 = "x264enc name=enc tune=zerolatency speed-preset=veryfast bitrate=4000 key-int-max=60"
 _BITRATE = ("bitrate", "Encoder bitrate in kbit/s", (("enc", "bitrate"),))
@@ -154,14 +153,6 @@ STARTER_COMPONENTS: list[StarterComponent] = [
 ]
 
 
-class StarterInfo(BaseModel):
-    id: str
-    name: str
-    description: str
-    available: bool
-    missing: list[str] = Field(default_factory=list)
-
-
 class StarterNotFound(KeyError):
     pass
 
@@ -196,26 +187,22 @@ class StarterComponents:
         self._catalog = catalog
         self._definitions: dict[str, Component] = {}
 
+    def _cached(self, starter: StarterComponent) -> Component:
+        if starter.id not in self._definitions:
+            self._definitions[starter.id] = _definition(starter, self._catalog)
+        return self._definitions[starter.id]
+
     def definition(self, starter_id: str) -> Component:
+        """A copy of the starter's definition, ready to be saved in the library."""
         starter = next((s for s in STARTER_COMPONENTS if s.id == starter_id), None)
         if starter is None:
             raise StarterNotFound(starter_id)
-        if starter_id not in self._definitions:
-            self._definitions[starter_id] = _definition(starter, self._catalog)
-        return self._definitions[starter_id].model_copy(deep=True)
+        return self._cached(starter).model_copy(deep=True)
 
     def list(self) -> list[StarterInfo]:
-        infos = []
-        for starter in STARTER_COMPONENTS:
-            graph = self.definition(starter.id).graph
-            missing = sorted({node.factory for node in graph.nodes if node.factory not in self._catalog})
-            infos.append(
-                StarterInfo(
-                    id=starter.id,
-                    name=starter.name,
-                    description=starter.description,
-                    available=not missing,
-                    missing=missing,
-                )
+        return [
+            starter_info(
+                starter.id, starter.name, starter.description, self._cached(starter).graph, self._catalog
             )
-        return infos
+            for starter in STARTER_COMPONENTS
+        ]

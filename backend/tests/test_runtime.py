@@ -1,22 +1,14 @@
 """End-to-end runtime tests: real pipelines in worker processes."""
 
-import json
-import struct
 import time
 
 import pytest
 
-from tests.api_client import api_client
+from pipelab.runtime.protocol import decode_ws_binary
 from tests.helpers import chain
 from tests.runtime_helpers import create_project, events_until, is_stopped
 
 pytestmark = pytest.mark.runtime
-
-
-@pytest.fixture(scope="module")
-def client(catalog, tmp_path_factory):
-    with api_client(tmp_path_factory.mktemp("runtime")) as client:
-        yield client
 
 
 _project = create_project
@@ -123,8 +115,7 @@ def test_link_tap_previews_raw_and_encoded_streams(client, chain_specs, edge, ki
         while not previews and time.monotonic() < deadline:
             message = ws.receive()
             if message.get("bytes"):
-                size = struct.unpack(">I", message["bytes"][:4])[0]
-                previews.append(json.loads(message["bytes"][4 : 4 + size]))
+                previews.append(decode_ws_binary(message["bytes"])[0])
         assert previews[0]["node_id"] == f"edge:{edge}" and previews[0]["kind"] == kind
         assert client.post(f"{base}/tap", json={"edge_id": edge, "enabled": False}).json() == {"ok": True}
         client.post(f"{base}/stop", json={"mode": "kill"})
@@ -186,8 +177,7 @@ def _preview_rate(ws, node_id, seconds, settle=3.0):
         message = ws.receive()
         if not message.get("bytes"):
             continue
-        size = struct.unpack(">I", message["bytes"][:4])[0]
-        if json.loads(message["bytes"][4 : 4 + size])["node_id"] != node_id:
+        if decode_ws_binary(message["bytes"])[0]["node_id"] != node_id:
             continue
         now = time.monotonic()
         start = start or now

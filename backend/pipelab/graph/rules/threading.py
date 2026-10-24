@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from pipelab.catalog.models import ElementInfo
 from pipelab.graph.caps_flow import QUEUE_LIKE
 from pipelab.graph.models import Edge, Fix, FixElement, Issue, Node, Suggestion
 from pipelab.graph.rules.base import RuleContext, issue
+from pipelab.gst.values import parse_bool
 
 LIVE_SOURCES = {
     "v4l2src",
@@ -52,48 +55,41 @@ def _without_queue(ctx: RuleContext, edges: list[Edge], upstream: bool = False) 
     return [e for e in edges if peer(e).factory not in QUEUE_LIKE]
 
 
-def tee_branches(ctx: RuleContext) -> list[Issue]:
+def _branches_without_queue(
+    ctx: RuleContext, splitter: Callable[[Node, ElementInfo], bool], rule: str, advice: str
+) -> list[Issue]:
+    """Elements pushing several branches from one thread need a queue at the start of each."""
     issues = []
-    for node, _element in ctx.nodes_with(lambda n, _e: n.factory == "tee"):
+    for node, _element in ctx.nodes_with(splitter):
         outgoing = ctx.graph.outgoing(node.id)
         missing = _without_queue(ctx, outgoing)
         if len(outgoing) >= 2 and missing:
             issues.append(
                 issue(
-                    "tee-queue",
-                    "warning",
-                    f"{node.name}: start every tee branch with a queue. Without it all branches share one "
-                    "thread and a blocked branch (e.g. a sink prerolling) stalls the others.",
-                    [node],
-                    missing,
-                    [_queue_suggestion(missing)],
+                    rule, "warning", f"{node.name}: {advice}", [node], missing, [_queue_suggestion(missing)]
                 )
             )
     return issues
 
 
-def _is_demuxer(_node: Node, element: ElementInfo) -> bool:
-    return "demuxer" in element.categories
+def tee_branches(ctx: RuleContext) -> list[Issue]:
+    return _branches_without_queue(
+        ctx,
+        lambda node, _element: node.factory == "tee",
+        "tee-queue",
+        "start every tee branch with a queue. Without it all branches share one thread and a blocked "
+        "branch (e.g. a sink prerolling) stalls the others.",
+    )
 
 
 def demuxer_branches(ctx: RuleContext) -> list[Issue]:
-    issues = []
-    for node, _element in ctx.nodes_with(_is_demuxer):
-        outgoing = ctx.graph.outgoing(node.id)
-        missing = _without_queue(ctx, outgoing)
-        if len(outgoing) >= 2 and missing:
-            issues.append(
-                issue(
-                    "demuxer-queue",
-                    "warning",
-                    f"{node.name}: put a queue on each demuxer output. Demuxers push all streams from one "
-                    "thread, so a branch waiting for data from another one deadlocks while prerolling.",
-                    [node],
-                    missing,
-                    [_queue_suggestion(missing)],
-                )
-            )
-    return issues
+    return _branches_without_queue(
+        ctx,
+        lambda _node, element: "demuxer" in element.categories,
+        "demuxer-queue",
+        "put a queue on each demuxer output. Demuxers push all streams from one thread, so a branch "
+        "waiting for data from another one deadlocks while prerolling.",
+    )
 
 
 def _is_aggregator(_node: Node, element: ElementInfo) -> bool:
@@ -123,7 +119,7 @@ def aggregator_inputs(ctx: RuleContext) -> list[Issue]:
 def _is_live(node: Node, element: ElementInfo) -> bool:
     if "source" not in element.categories:
         return False
-    return node.factory in LIVE_SOURCES or node.properties.get("is-live") is True
+    return node.factory in LIVE_SOURCES or parse_bool(node.properties.get("is-live"))
 
 
 def live_sources(ctx: RuleContext) -> list[Issue]:

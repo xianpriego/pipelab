@@ -68,12 +68,12 @@ def test_python_export_compiles(catalog, built):
 def test_python_export_uses_typed_and_parsed_setters(catalog):
     content = export_graph(compositor_graph(), catalog, "python", "Picture in picture").content
     assert "class PictureInPicturePipeline:" in content
-    assert 'self._make("videotestsrc", "b", {}, {"pattern": "ball"})' in content
-    assert 'self._configure_pad("c", "sink_1", {"alpha": 0.5, "xpos": 320}, {})' in content
+    assert "elements['b'] = make_element(container, 'videotestsrc', 'b', {}, {'pattern': 'ball'})" in content
+    assert "configure(pad_of(elements['c'], 'sink_1')[0], {'alpha': 0.5, 'xpos': 320}, {})" in content
     selector = export_graph(selector_graph(), catalog, "python", "s").content
-    assert 'self._set_pad_reference("sel", "active-pad", "sink_1")' in selector
+    assert "apply_value(elements['sel'], 'active-pad', 'sink_1')" in selector
     demux = export_graph(demuxer_graph(), catalog, "python", "d").content
-    assert 'self._link_dynamic("d", "video_%u", "qv", "sink")' in demux
+    assert "link_dynamic(elements, 'd', 'video_%u', 'qv', 'sink')" in demux
 
 
 @pytest.mark.runtime
@@ -124,14 +124,15 @@ def test_c_export_avoids_reserved_names(catalog):
 def test_rust_export_structure(catalog):
     content = export_graph(compositor_graph(), catalog, "rust", "comp").content
     assert '//!   gstreamer = "0.25"' in content
-    assert 'let b = make(&pipeline, "videotestsrc", "b", &[("pattern", "ball")])?;' in content
-    assert 'link(&a, "src", &c, "sink_0")?;' in content
-    assert 'pad(&c, "sink_1")?.set_property_from_str("xpos", "320");' in content
+    make = 'rt::make_element(&container, "videotestsrc", "b", &[("pattern", "ball")])?'
+    assert f'elements.insert("b".into(), {make});' in content
+    assert 'rt::link(&elements, "a", "src", "c", "sink_0")?;' in content
+    assert 'rt::configure_pad(&elements["c"], "sink_1", &[("alpha", "0.5"), ("xpos", "320")])?;' in content
     assert content.count("{") == content.count("}")
     demux = export_graph(demuxer_graph(), catalog, "rust", "demux").content
-    assert 'link_dynamic(&d, "video_%u", &qv, "sink")?;' in demux
+    assert 'rt::link_dynamic(&elements, "d", "video_%u", "qv", "sink")?;' in demux
     selector = export_graph(selector_graph(), catalog, "rust", "sel").content
-    assert 'sel.set_property("active-pad", &pad(&sel, "sink_1")?);' in selector
+    assert 'rt::apply_value(&elements["sel"], "active-pad", "sink_1", None)?;' in selector
 
 
 def test_json_document_round_trips(catalog):

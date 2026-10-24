@@ -7,8 +7,6 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from pipelab.catalog.models import PropertyValue
-from pipelab.graph.dynamic import ApiFunction, Slot
-from pipelab.graph.probes import ProbeRuleSet
 
 Severity = Literal["error", "warning", "info"]
 
@@ -36,31 +34,10 @@ class Edge(BaseModel):
     target_pad: str
 
 
-class ScriptTarget(BaseModel):
-    kind: Literal["node", "edge"]
-    id: str
-
-
-class ProbeScript(BaseModel):
-    """User Python attached to an element or a link (see runtime/worker/scripting.py)."""
-
-    id: str
-    name: str = "Script"
-    enabled: bool = True
-    target: ScriptTarget
-    code: str = ""
-
-
 class Graph(BaseModel):
+    # Unknown keys are ignored, so documents saved by older versions still load.
     nodes: list[Node] = Field(default_factory=list)
     edges: list[Edge] = Field(default_factory=list)
-    scripts: list[ProbeScript] = Field(default_factory=list)
-    probes: list[ProbeRuleSet] = Field(default_factory=list)
-    slots: list[Slot] = Field(default_factory=list)
-    functions: list[ApiFunction] = Field(default_factory=list)
-
-    def scripts_for(self, kind: str, target_id: str) -> list[ProbeScript]:
-        return [s for s in self.scripts if s.target.kind == kind and s.target.id == target_id]
 
     def node(self, node_id: str) -> Node | None:
         return next((n for n in self.nodes if n.id == node_id), None)

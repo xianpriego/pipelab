@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from pipelab.catalog.models import Family
-from pipelab.gst import Gst
 from pipelab.gst.caps import media_types as caps_media_types
+from pipelab.gst.caps import parse_caps
 
 _SOURCE_FAMILIES: dict[str, Family] = {
     "gstreamer": "core",
@@ -87,8 +87,7 @@ def classify_categories(name: str, klass: str) -> list[str]:
 
 def media_types(caps_string: str) -> list[str]:
     """Media type names (with non-system memory features) in a caps string."""
-    caps = Gst.Caps.from_string(caps_string) if caps_string else None
-    return caps_media_types(caps) if caps is not None else []
+    return caps_media_types(parse_caps(caps_string)) if caps_string else []
 
 
 def inferred_any_caps(klass: str, direction: str) -> str | None:

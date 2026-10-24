@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { api, errorMessage } from "../api/client";
-import type { ComponentDef, ComponentParam, ComponentPort } from "../api/dynamic";
+import type { ComponentDef, ComponentParam, ComponentPort } from "../api/components";
 import type { Graph } from "../api/types";
 import { pruneDefinition } from "../lib/components";
 import { scopePrefix } from "../lib/scope";
@@ -61,11 +61,6 @@ export function draftDefinition(session: ComponentSession, graph: Graph): Compon
 export function sessionGraph(index: number, sessions: ComponentSession[] = useComponentStore.getState().sessions): Graph {
   const graphs = useGraphStore.getState();
   return index === sessions.length - 1 ? graphs.graph : graphs.scopes[index + 1]?.graph ?? graphs.graph;
-}
-
-/** Whether any open component has unsaved changes. */
-export function anyDirty(sessions: ComponentSession[] = useComponentStore.getState().sessions): boolean {
-  return sessions.some((session, index) => isDirty(session, sessionGraph(index, sessions)));
 }
 
 /**

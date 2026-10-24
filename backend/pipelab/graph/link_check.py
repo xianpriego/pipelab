@@ -4,32 +4,17 @@ from __future__ import annotations
 
 from pipelab.catalog.models import ElementInfo
 from pipelab.graph.analyzer import Analyzer
-from pipelab.graph.bridge import media_names
-from pipelab.graph.caps_flow import caps_to_string
+from pipelab.graph.caps_flow import CAPS_FILTERS, CONVERTERS
 from pipelab.graph.models import Edge, Fix, Graph, Issue, LinkCheckResult, Node, PadRef, Suggestion
 from pipelab.graph.pads import resolve_pad_name
 from pipelab.graph.suggest import insert_suggestion
 from pipelab.graph.topology import reaches
 from pipelab.gst import Gst
-from pipelab.gst.caps import media_types
+from pipelab.gst.caps import caps_to_string, describe_caps, media_names
 
 RAW_CONVERTERS = {"video/x-raw": ["videoconvert"], "audio/x-raw": ["audioconvert", "audioresample"]}
-CONVERTER_NAMES = {
-    "videoconvert",
-    "videoconvertscale",
-    "videoscale",
-    "videorate",
-    "audioconvert",
-    "audioresample",
-    "audiorate",
-    "capsfilter",
-}
+CONVERTER_NAMES = CONVERTERS | CAPS_FILTERS
 _SEVERITY_ORDER = {"ok": 0, "info": 1, "warning": 2, "error": 3}
-
-
-def describe_caps(caps: Gst.Caps) -> str:
-    names = media_types(caps)
-    return ", ".join(names[:4]) + (" …" if len(names) > 4 else "")
 
 
 class _LinkContext:
@@ -40,7 +25,6 @@ class _LinkContext:
         self.existing = graph.edge(edge.id) is not None
         self.issues: list[Issue] = []
         self.src_presence = "always"
-        self.sink_presence = "always"
 
     def add(
         self, rule: str, severity: str, message: str, suggestions: list[Suggestion] | None = None
@@ -106,7 +90,7 @@ def _resolve_pads(ctx: _LinkContext, source: Node, target: Node) -> bool:
     if sink_template is None or sink_template.direction != "sink":
         ctx.add("unknown-pad", "error", f"'{target.name}' has no input pad '{ctx.edge.target_pad}'.")
         return False
-    ctx.src_presence, ctx.sink_presence = src_template.presence, sink_template.presence
+    ctx.src_presence = src_template.presence
     return True
 
 

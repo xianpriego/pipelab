@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError, api } from "../../api/client";
-import type { ComponentBundle } from "../../api/dynamic";
+import type { ComponentBundle } from "../../api/components";
 import { useComponentStore } from "../../store/componentStore";
 import { importComponentFile } from "./componentActions";
 import { StartersDialog } from "./StartersDialog";

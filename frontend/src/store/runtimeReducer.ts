@@ -1,6 +1,5 @@
 // Pure reducer turning runtime events into UI state.
 
-import type { SlotInstance } from "../api/dynamic";
 import type { BusEvent, PropertyEvent, RuntimeEvent, StatsEvent } from "../api/events";
 import type { PropertyValue, RuntimeState } from "../api/types";
 
@@ -34,10 +33,6 @@ export interface RuntimeData {
   edgeAlerts: Record<string, NodeAlert>;
   lastProperty: PropertyEvent | null;
   liveProps: LiveProps;
-  /** Values requested from the UI that a script deferred (e.g. switch at the next keyframe). */
-  pending: LiveProps;
-  /** Live instances per slot id (from ``instances`` events and GET /runtime/instances). */
-  instances: Record<string, SlotInstance[]>;
   eos: boolean;
   seq: number;
 }
@@ -45,7 +40,7 @@ export interface RuntimeData {
 export function initialRuntime(): RuntimeData {
   return {
     state: "idle", error: null, bus: [], logs: [], stats: null, caps: {}, nodeAlerts: {}, edgeAlerts: {},
-    lastProperty: null, liveProps: {}, pending: {}, instances: {}, eos: false, seq: 0,
+    lastProperty: null, liveProps: {}, eos: false, seq: 0,
   };
 }
 
@@ -90,17 +85,8 @@ export function applyRuntimeEvent(state: RuntimeData, event: RuntimeEvent, now =
       const seq = state.seq + 1;
       return { ...state, seq, logs: capped(state.logs, { seq, line: event.line }, LOG_LIMIT) };
     }
-    case "instances":
-      return { ...state, instances: { ...state.instances, [event.slot]: event.instances } };
     case "property":
-      return {
-        ...state,
-        lastProperty: event,
-        liveProps: withLiveProperty(state.liveProps, event),
-        pending: event.origin === "runtime"
-          ? withoutPending(state.pending, event.node_id, liveKey(event.property, event.pad))
-          : state.pending,
-      };
+      return { ...state, lastProperty: event, liveProps: withLiveProperty(state.liveProps, event) };
     default:
       return state;
   }
@@ -110,19 +96,8 @@ export function liveKey(property: string, pad?: string | null): string {
   return pad ? `${pad}::${property}` : property;
 }
 
-/** ``pending`` without the deferred value of ``key`` on ``nodeId``. */
-export function withoutPending(pending: LiveProps, nodeId: string, key: string): LiveProps {
-  if (!pending[nodeId] || !(key in pending[nodeId])) return pending;
-  const props = { ...pending[nodeId] };
-  delete props[key];
-  const next = { ...pending };
-  if (Object.keys(props).length) next[nodeId] = props;
-  else delete next[nodeId];
-  return next;
-}
-
 function withLiveProperty(live: LiveProps, event: PropertyEvent): LiveProps {
-  if (!event.ok || event.deferred || event.value === null || event.value === undefined) return live;
+  if (!event.ok || event.value === null || event.value === undefined) return live;
   const key = liveKey(event.property, event.pad);
   return { ...live, [event.node_id]: { ...live[event.node_id], [key]: event.value } };
 }

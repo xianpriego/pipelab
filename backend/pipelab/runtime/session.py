@@ -24,6 +24,7 @@ log = logging.getLogger(__name__)
 
 Outgoing = tuple[str, str | bytes]  # ("text", json) or ("bytes", frame)
 _REPLAYED_LOG_LINES = 200
+_REPLAYED_EVENTS = 300
 _LOG_LINES_PER_SECOND = 300
 _PACKAGE_ROOT = Path(pipelab.__file__).resolve().parent.parent  # the worker runs from the media dir
 
@@ -44,14 +45,14 @@ class RuntimeSession:
         self.project_id = project_id
         self.media_dir = media_dir
         self.status = RuntimeStatus(project_id=project_id)
+        self.graph: Graph | None = None  # the graph of the current (or last) run
         self._process: asyncio.subprocess.Process | None = None
         self._tasks: list[asyncio.Task] = []
         self._subscribers: set[asyncio.Queue[Outgoing]] = set()
-        self._history: deque[dict[str, Any]] = deque(maxlen=500)
+        self._history: deque[dict[str, Any]] = deque(maxlen=_REPLAYED_EVENTS)
         self._logs: deque[str] = deque(maxlen=2000)
         self._caps: dict[str, dict[str, Any]] = {}
         self._properties: dict[tuple, dict[str, Any]] = {}
-        self._instances: dict[str, dict[str, Any]] = {}
         self._stats: dict[str, Any] | None = None
         self._pending: dict[str, asyncio.Future[dict[str, Any]]] = {}
         self._stopping = False
@@ -60,17 +61,12 @@ class RuntimeSession:
     def running(self) -> bool:
         return self._process is not None and self._process.returncode is None
 
-    async def start(
-        self,
-        graph: Graph,
-        gst_debug: str,
-        preview: dict[str, Any] | None = None,
-        components: dict[str, Any] | None = None,
-    ) -> None:
+    async def start(self, graph: Graph, gst_debug: str, components: dict[str, Any] | None = None) -> None:
         if self.running:
             await self.stop("kill")
         await asyncio.gather(*self._tasks, return_exceptions=True)  # let the previous run settle
         self._reset()
+        self.graph = graph
         python_path = os.pathsep.join(filter(None, [str(_PACKAGE_ROOT), os.environ.get("PYTHONPATH")]))
         env = {**os.environ, "GST_DEBUG": gst_debug, "GST_DEBUG_NO_COLOR": "1", "PYTHONPATH": python_path}
         self.media_dir.mkdir(parents=True, exist_ok=True)
@@ -86,9 +82,7 @@ class RuntimeSession:
         )
         self._update_status({"type": "state", "state": "starting"})
         self.status.started_at = time.time()
-        await self._write(
-            {"graph": graph.model_dump(), "components": components or {}, "preview": preview or {}}
-        )
+        await self.send({"graph": graph.model_dump(), "components": components or {}})
         process = self._process
         readers = [
             asyncio.create_task(self._read_events(process)),
@@ -101,12 +95,12 @@ class RuntimeSession:
         self._logs.clear()
         self._caps.clear()
         self._properties.clear()
-        self._instances.clear()
         self._stats = None
         self._stopping = False
         self.status = RuntimeStatus(project_id=self.project_id)
 
-    async def _write(self, message: dict[str, Any]) -> None:
+    async def send(self, message: dict[str, Any]) -> None:
+        """Send a command that has no reply."""
         if not self.running:
             raise RuntimeCommandError("the pipeline is not running")
         assert self._process is not None and self._process.stdin is not None
@@ -114,15 +108,12 @@ class RuntimeSession:
         with contextlib.suppress(ConnectionResetError, BrokenPipeError):
             await self._process.stdin.drain()
 
-    async def send(self, command: dict[str, Any]) -> None:
-        await self._write(command)
-
     async def request(self, command: dict[str, Any], timeout: float = 5.0) -> dict[str, Any]:
         request_id = uuid.uuid4().hex
         future: asyncio.Future[dict[str, Any]] = asyncio.get_running_loop().create_future()
         self._pending[request_id] = future
         try:
-            await self._write({**command, "request_id": request_id})
+            await self.send({**command, "request_id": request_id})
             return await asyncio.wait_for(future, timeout)
         except TimeoutError as error:
             raise RuntimeCommandError("the pipeline did not answer in time") from error
@@ -135,7 +126,7 @@ class RuntimeSession:
             return
         self._stopping = True
         with contextlib.suppress(RuntimeCommandError):
-            await self._write({"cmd": "stop", "mode": mode})
+            await self.send({"cmd": "stop", "mode": mode})
         try:
             await asyncio.wait_for(process.wait(), timeout if mode == "eos" else 2.0)
         except TimeoutError:
@@ -164,8 +155,6 @@ class RuntimeSession:
             self._caps[event["edge_id"]] = event
         elif event["type"] == "stats":
             self._stats = event
-        elif event["type"] == "instances":
-            self._instances[event["slot"]] = event
         elif event["type"] == "property":
             self._properties[(event.get("node_id"), event.get("pad"), event.get("property"))] = event
         elif event["type"] != "probe":
@@ -237,10 +226,9 @@ class RuntimeSession:
         properties = [{k: v for k, v in e.items() if k != "request_id"} for e in self._properties.values()]
         return [
             self._state_event(),
-            *list(self._history)[-300:],
+            *self._history,
             *self._caps.values(),
             *properties,
-            *self._instances.values(),
             *stats,
             *logs,
         ]
@@ -261,9 +249,16 @@ class RuntimeManager:
         self._sessions: dict[str, RuntimeSession] = {}
 
     def session(self, project_id: str) -> RuntimeSession:
+        """The session of a project, created on first use (the caller checks the project exists)."""
         if project_id not in self._sessions:
             self._sessions[project_id] = RuntimeSession(project_id, self._media_dir)
         return self._sessions[project_id]
+
+    async def discard(self, project_id: str) -> None:
+        """Stop and forget the session of a deleted project."""
+        session = self._sessions.pop(project_id, None)
+        if session is not None:
+            await session.stop("kill")
 
     async def shutdown(self) -> None:
         await asyncio.gather(*(s.stop("kill") for s in self._sessions.values()), return_exceptions=True)

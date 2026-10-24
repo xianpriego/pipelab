@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import os
 import re
 import threading
 from datetime import UTC, datetime
 from pathlib import Path
 
 from pipelab.components.models import Component
+from pipelab.storage.files import atomic_write
 
 _ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,62}$")
 
@@ -63,9 +63,7 @@ class ComponentStore:
             saved = component.model_copy(
                 update={"version": (previous.version + 1) if previous else 1, "updated_at": datetime.now(UTC)}
             )
-            temporary = path.with_suffix(".json.tmp")
-            temporary.write_text(saved.model_dump_json(indent=2))
-            os.replace(temporary, path)
+            atomic_write(path, saved.model_dump_json(indent=2))
             self._revision += 1
             return saved
 

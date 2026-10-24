@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 
-export type DockTab = "issues" | "bus" | "log" | "preview" | "outputs" | "stats" | "perf" | "probe" | "api";
+export type DockTab = "issues" | "bus" | "log" | "preview" | "outputs" | "stats" | "perf" | "probe";
 export type Theme = "dark" | "light";
 export type ToastLevel = "info" | "success" | "warning" | "error";
 export type DialogName = "export" | "import" | "runtime-graph" | null;

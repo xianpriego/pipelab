@@ -10,7 +10,8 @@ from pipelab.catalog.classify import media_types
 from pipelab.catalog.models import ElementInfo, PadSummary, PadTemplateInfo, PropertyInfo
 from pipelab.catalog.store import Catalog
 from pipelab.components.models import Component, ComponentParam, ComponentPort, component_id
-from pipelab.graph.caps_flow import CapsFlow, caps_to_string
+from pipelab.graph.caps_flow import CapsFlow
+from pipelab.gst.caps import caps_to_string
 
 
 def dependency_order(components: dict[str, Component]) -> list[Component]:
@@ -61,11 +62,7 @@ def _param_property(component: Component, param: ComponentParam, catalog: Catalo
             continue
         if target.pad:
             template = catalog.pad_template(node.factory, target.pad)
-            source = (
-                next((p for p in template.properties if p.name == target.property), None)
-                if template
-                else None
-            )
+            source = template.property(target.property) if template else None
         else:
             element = catalog.get(node.factory)
             source = element.property(target.property) if element else None

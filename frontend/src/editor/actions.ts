@@ -2,7 +2,6 @@
 
 import { api, errorMessage } from "../api/client";
 import { tapKey } from "../api/events";
-import type { PropertyEvent } from "../api/events";
 import type { Fix, LinkCheckResult, PropertyChange, Suggestion } from "../api/types";
 import { projectGraph, useGraphStore } from "../store/graphStore";
 import { useProjectStore } from "../store/projectStore";
@@ -80,54 +79,33 @@ export function reportLinkResult(result: LinkCheckResult): void {
   });
 }
 
-export type LiveOutcome = "applied" | "deferred" | "failed";
-
-/** Whether the element already reported ``change`` by itself since ``before`` (a fast deferred switch). */
-function reportedSince(before: PropertyEvent | null, change: PropertyChange): boolean {
-  const last = useRuntimeStore.getState().lastProperty;
-  return last !== before && last?.origin === "runtime" && last.node_id === change.node_id &&
-    last.property === change.property && (last.pad ?? null) === (change.pad ?? null);
-}
-
 /**
- * Applies a property on the running element. When a probe script takes the change over
- * (e.g. "switch at the next keyframe") the requested value stays *pending* until the
- * element reports it; otherwise the value actually in effect is stored.
+ * Applies a property on the running element; false when it was refused. The value actually in
+ * effect is kept in the graph (elements may clamp or adjust what they are given).
  */
-export async function applyLiveProperty(change: PropertyChange): Promise<LiveOutcome> {
+export async function sendLiveProperty(change: PropertyChange): Promise<boolean> {
   const meta = useProjectStore.getState().meta;
-  if (!meta) return "failed";
-  const before = useRuntimeStore.getState().lastProperty;
+  if (!meta) return false;
   try {
     const result = await api.runtimeSetProperty(meta.id, change);
     if (!result.ok) {
       notify({ level: "error", title: `Live change of ${change.property} failed`, message: result.error ?? undefined });
-      return "failed";
+      return false;
     }
+    const effective = result.value ?? change.value;
     const runtime = useRuntimeStore.getState();
-    const effective = result.deferred ? change.value : result.value;
     if (runtime.runningGraph) {
-      const applied = effective ?? change.value;
-      runtime.setRunningGraph(withLiveProperty(runtime.runningGraph, change.node_id, change.property, applied, change.pad));
+      runtime.setRunningGraph(withLiveProperty(runtime.runningGraph, change.node_id, change.property, effective, change.pad));
     }
-    if (result.deferred) {
-      if (!reportedSince(before, change)) runtime.setPending(change.node_id, change.property, change.value, change.pad);
-      return "deferred";
-    }
-    if (effective === undefined || effective === null || effective === change.value) return "applied";
+    if (effective === change.value) return true;
     const graph = useGraphStore.getState();
     if (change.pad) graph.setPadProperty(change.node_id, change.pad, change.property, effective);
     else graph.setProperty(change.node_id, change.property, effective);
-    return "applied";
+    return true;
   } catch (error) {
     notify({ level: "error", title: `Live change of ${change.property} failed`, message: errorMessage(error) });
-    return "failed";
+    return false;
   }
-}
-
-/** Applies a property on the running element; false when it was refused. */
-export async function sendLiveProperty(change: PropertyChange): Promise<boolean> {
-  return (await applyLiveProperty(change)) !== "failed";
 }
 
 /** Makes ``pad`` the active pad of a selector: saved in the graph and, while running, applied live. */
@@ -137,11 +115,7 @@ export async function selectActivePad(nodeId: string, pad: string): Promise<void
   if (!isActive(runtime.state)) return;
   const previous = runtime.liveProps[nodeId]?.[ACTIVE_PAD];
   runtime.setLiveProp(nodeId, ACTIVE_PAD, pad);
-  const change = { node_id: nodeId, property: ACTIVE_PAD, value: pad };
-  const before = useRuntimeStore.getState().lastProperty;
-  const outcome = await applyLiveProperty(change);
-  // Deferred: the pad is still the old one until the element reports the switch.
-  if (outcome === "failed" || (outcome === "deferred" && !reportedSince(before, change))) {
+  if (!(await sendLiveProperty({ node_id: nodeId, property: ACTIVE_PAD, value: pad }))) {
     useRuntimeStore.getState().setLiveProp(nodeId, ACTIVE_PAD, previous);
   }
 }

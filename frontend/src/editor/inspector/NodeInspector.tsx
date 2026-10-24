@@ -10,15 +10,11 @@ import { hasWorker, isActive } from "../../store/runtimeReducer";
 import { useRuntimeStore } from "../../store/runtimeStore";
 import { useUiStore } from "../../store/uiStore";
 import { sendLiveProperty } from "../actions";
-import { ScriptsSection } from "../scripts/ScriptsSection";
-import { selectorDirection } from "../../lib/selectors";
 import { isComponentFactory } from "../../lib/components";
 import { useCurrentSession, useRuntimePrefix } from "../../store/componentStore";
 import { InstanceSection } from "../blocks/InstanceSection";
 import { PortsSection } from "../blocks/PortsSection";
 import { useExposeParam } from "../blocks/useExposeParam";
-import { acceptsSlots } from "../slots/slotActions";
-import { SlotsSection } from "../slots/SlotsSection";
 import { Collapsible } from "./Collapsible";
 import { ElementInfoSection } from "./ElementInfoSection";
 import { LiveValues } from "./LiveValues";
@@ -26,7 +22,6 @@ import { NodeHeader } from "./NodeHeader";
 import { PadProperties } from "./PadProperties";
 import { PadTemplates } from "./PadTemplates";
 import { PropertyList } from "./PropertyList";
-import { ADVANCED } from "../../lib/features";
 
 export function NodeInspector({ nodeId }: { nodeId: string }) {
   const node = useGraphStore((state) => state.graph.nodes.find((n) => n.id === nodeId));
@@ -40,7 +35,6 @@ export function NodeInspector({ nodeId }: { nodeId: string }) {
   const running = useRuntimeStore((state) => isActive(state.state)) && !inScope;
   const inspectable = useRuntimeStore((state) => hasWorker(state.state)) && prefix !== null;
   const exposer = useExposeParam(node);
-  const pending = useRuntimeStore((state) => (node ? state.pending[node.id] : undefined));
   const details = useElementDetails(node?.factory);
   const pads = useMemo(
     () => (node ? [...usedPads(node.id, edges, "sink"), ...usedPads(node.id, edges, "src")] : []),
@@ -81,23 +75,18 @@ export function NodeInspector({ nodeId }: { nodeId: string }) {
       {!summary ? (
         <div className="inspector-section badge error">This element is not installed in the runtime image.</div>
       ) : null}
-      {ADVANCED && !inScope && acceptsSlots(summary) ? <SlotsSection nodeId={node.id} /> : null}
       <Collapsible title={instance ? "Parameters" : "Properties"} defaultOpen>
         {instance && details && !details.properties.some((prop) => prop.writable) ? (
           <p className="muted">No parameters: open the component and expose inner properties to set them per instance.</p>
         ) : details ? (
           <PropertyList properties={details.properties} values={node.properties} running={running} pads={pads}
-            pending={running ? pending : undefined} onChange={onChange} onTryLive={onTryLive} extra={exposer.extra} />
+            onChange={onChange} onTryLive={onTryLive} extra={exposer.extra} />
         ) : summary ? (
           <span className="spinner" />
         ) : null}
       </Collapsible>
       {details ? <PadProperties node={node} details={details} edges={edges} running={running} extra={exposer.extra} /> : null}
       {inScope ? <PortsSection node={node} details={details} /> : null}
-      {ADVANCED ? (
-        <ScriptsSection target={{ kind: "node", id: node.id }} factory={node.factory}
-          selector={selectorDirection(summary) !== null} />
-      ) : null}
       {inspectable ? (
         <Collapsible title="Live values">
           <LiveValues nodeId={`${prefix ?? ""}${node.id}`} />

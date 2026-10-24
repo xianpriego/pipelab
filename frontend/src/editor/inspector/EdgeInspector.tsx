@@ -11,9 +11,7 @@ import { useValidationStore } from "../../store/validationStore";
 import { IssueItem } from "../dock/IssueItem";
 import { setLinkProbe, setLinkTap } from "../actions";
 import { useProbeStore } from "../../store/probeStore";
-import { ScriptsSection } from "../scripts/ScriptsSection";
 import { InsertOnEdge } from "./InsertOnEdge";
-import { ADVANCED } from "../../lib/features";
 
 function templateCaps(details: ElementInfo | undefined, pad: string): string {
   if (!details) return "…";
@@ -51,7 +49,6 @@ export function EdgeInspector({ edgeId }: { edgeId: string }) {
       ) : null}
       <WatchLink edgeId={edge.id} />
       <ProbeLink edgeId={edge.id} />
-      {ADVANCED ? <ScriptsSection target={{ kind: "edge", id: edge.id }} /> : null}
       <div className="inspector-section">
         <h3>Insert element on this link</h3>
         <InsertOnEdge edgeId={edge.id} />

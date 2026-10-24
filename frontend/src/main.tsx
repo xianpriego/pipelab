@@ -10,7 +10,7 @@ import "./styles/canvas.css";
 import "./styles/palette.css";
 import "./styles/inspector.css";
 import "./styles/dock.css";
-import "./styles/dynamic.css";
+import "./styles/components.css";
 import "./styles/perf.css";
 import { App } from "./App";
 

@@ -94,3 +94,10 @@
 .probe-row.log.level-warning { background: var(--warning-soft); }
 .probe-row.log.level-error { background: var(--danger-soft); }
 .probe-row.log td:first-child { box-shadow: inset 3px 0 0 var(--gst-blue); }
+
+/* Application messages posted by elements: structure name and fields. */
+.bus-row.kind-application { background: var(--component-soft); }
+.badge.kind.application { background: var(--accent-component); color: #fff; }
+.app-name { color: var(--accent-component); }
+.bus-fields { display: inline-flex; flex-wrap: wrap; gap: 3px; }
+.field-chip { font-size: 10.5px; padding: 0 5px; border-radius: 8px; background: var(--bg-active); color: var(--text-muted); }

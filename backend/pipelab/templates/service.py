@@ -2,20 +2,11 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
-
 from pipelab.catalog.store import Catalog
 from pipelab.graph.models import Graph
 from pipelab.importer.gst_launch import import_gst_launch
+from pipelab.templates.info import StarterInfo, starter_info
 from pipelab.templates.starters import STARTERS, Starter
-
-
-class TemplateInfo(BaseModel):
-    id: str
-    name: str
-    description: str
-    available: bool
-    missing: list[str] = Field(default_factory=list)
 
 
 class TemplateNotFound(KeyError):
@@ -32,22 +23,11 @@ class TemplateService:
             self._graphs[starter.id] = import_gst_launch(starter.pipeline, self._catalog).graph
         return self._graphs[starter.id]
 
-    def list(self) -> list[TemplateInfo]:
-        templates = []
-        for starter in STARTERS:
-            missing = sorted(
-                {n.factory for n in self._graph(starter).nodes if n.factory not in self._catalog}
-            )
-            templates.append(
-                TemplateInfo(
-                    id=starter.id,
-                    name=starter.name,
-                    description=starter.description,
-                    available=not missing,
-                    missing=missing,
-                )
-            )
-        return templates
+    def list(self) -> list[StarterInfo]:
+        return [
+            starter_info(starter.id, starter.name, starter.description, self._graph(starter), self._catalog)
+            for starter in STARTERS
+        ]
 
     def graph(self, template_id: str) -> Graph:
         starter = next((s for s in STARTERS if s.id == template_id), None)

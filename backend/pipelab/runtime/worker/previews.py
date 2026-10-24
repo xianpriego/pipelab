@@ -13,7 +13,9 @@ from __future__ import annotations
 from pipelab.catalog.previewable import preview_kind_for
 from pipelab.graph.models import Node
 from pipelab.gst import Gst
-from pipelab.runtime.worker.encoder import Emit, FrameEncoder, FrameHandler, FrameThinner, PreviewSettings
+from pipelab.gst.values import parse_bool
+from pipelab.runtime.worker.encoder import FrameEncoder, FrameThinner, PreviewSettings
+from pipelab.runtime.worker.events import Emit
 
 # Raw buffers waiting for the encoder; beyond that, previews drop frames.
 _ENCODER_QUEUE = {"video": 2, "audio": 100}
@@ -34,19 +36,14 @@ def preview_kind(node: Node) -> str | None:
     return None if node.preview == "off" else preview_kind_for(node.factory)
 
 
-def _sync(node: Node) -> bool:
-    value = node.properties.get("sync", True)
-    return value if isinstance(value, bool) else str(value).lower() not in ("false", "0", "no")
-
-
 def preview_sink(
-    node: Node, kind: str, settings: PreviewSettings, on_frame: FrameHandler, emit: Emit
+    node: Node, kind: str, settings: PreviewSettings, emit: Emit
 ) -> tuple[Gst.Element, FrameEncoder]:
     """The element replacing ``node`` and the side pipeline encoding its frames."""
-    encoder = FrameEncoder(kind, node.id, settings, on_frame, emit, max_buffers=_ENCODER_QUEUE[kind])
+    encoder = FrameEncoder(kind, node.id, settings, emit, max_buffers=_ENCODER_QUEUE[kind])
     sink = Gst.ElementFactory.make("appsink", node.name)
     sink.set_property("caps", Gst.Caps.from_string(_SINK_CAPS[kind]))
-    sink.set_property("sync", _sync(node))
+    sink.set_property("sync", parse_bool(node.properties.get("sync"), default=True))
     sink.set_property("emit-signals", True)
     sink.set_property("max-buffers", 1)
     thinner = FrameThinner(settings.max_fps) if kind == "video" else None

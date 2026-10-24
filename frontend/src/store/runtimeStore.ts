@@ -1,10 +1,9 @@
 // Runtime state of the open project (events reduced by runtimeReducer).
 
 import { create } from "zustand";
-import type { SlotInstance } from "../api/dynamic";
 import type { RuntimeEvent } from "../api/events";
 import type { Graph, PropertyValue, RuntimeStatus } from "../api/types";
-import { applyRuntimeEvent, initialRuntime, liveKey, withoutPending, type RuntimeData } from "./runtimeReducer";
+import { applyRuntimeEvent, initialRuntime, liveKey, type RuntimeData } from "./runtimeReducer";
 
 interface RuntimeStore extends RuntimeData {
   connected: boolean;
@@ -13,12 +12,9 @@ interface RuntimeStore extends RuntimeData {
   setRunningGraph: (graph: Graph | null) => void;
   /** Optimistic live value (confirmed or replaced by the worker's property event). */
   setLiveProp: (nodeId: string, property: string, value: PropertyValue | undefined, pad?: string | null) => void;
-  /** Mark a requested value as deferred by a script until the element reports it. */
-  setPending: (nodeId: string, property: string, value: PropertyValue | undefined, pad?: string | null) => void;
   apply: (event: RuntimeEvent) => void;
   setStatus: (status: RuntimeStatus) => void;
   setConnected: (connected: boolean) => void;
-  setInstances: (slots: Record<string, SlotInstance[]>) => void;
   /** Drop run data before the websocket replays it after (re)connecting. */
   clearReplayed: () => void;
   reset: () => void;
@@ -36,12 +32,6 @@ export const useRuntimeStore = create<RuntimeStore>((set) => ({
       else props[liveKey(property, pad)] = value;
       return { liveProps: { ...state.liveProps, [nodeId]: props } };
     }),
-  setPending: (nodeId, property, value, pad) =>
-    set((state) => {
-      const key = liveKey(property, pad);
-      if (value === undefined) return { pending: withoutPending(state.pending, nodeId, key) };
-      return { pending: { ...state.pending, [nodeId]: { ...state.pending[nodeId], [key]: value } } };
-    }),
   apply: (event) => set((state) => applyRuntimeEvent(state, event)),
   setStatus: (status) =>
     set((state) => {
@@ -52,9 +42,6 @@ export const useRuntimeStore = create<RuntimeStore>((set) => ({
     }),
   setConnected: (connected) => set({ connected }),
   clearReplayed: () =>
-    set({
-      bus: [], logs: [], caps: {}, stats: null, nodeAlerts: {}, edgeAlerts: {}, liveProps: {}, pending: {}, instances: {},
-    }),
-  setInstances: (slots) => set({ instances: slots }),
+    set({ bus: [], logs: [], caps: {}, stats: null, nodeAlerts: {}, edgeAlerts: {}, liveProps: {} }),
   reset: () => set({ ...initialRuntime(), connected: false, runningGraph: null }),
 }));

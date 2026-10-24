@@ -43,5 +43,12 @@ def encode_ws_binary(header: dict[str, Any], payload: bytes) -> bytes:
     return _WS_HEADER.pack(len(data)) + data + payload
 
 
+def decode_ws_binary(frame: bytes) -> tuple[dict[str, Any], bytes]:
+    """Inverse of ``encode_ws_binary`` (what the browser does with preview frames)."""
+    (size,) = _WS_HEADER.unpack_from(frame)
+    start = _WS_HEADER.size
+    return json.loads(frame[start : start + size]), frame[start + size :]
+
+
 def encode_command(command: dict[str, Any]) -> bytes:
     return (json.dumps(command) + "\n").encode()

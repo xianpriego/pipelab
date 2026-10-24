@@ -14,9 +14,6 @@ COPY . .
 CMD ["npm", "test", "--", "--run"]
 
 FROM test AS build
-# 1 shows the advanced editor features (slots, API functions, probe rules and scripts).
-ARG VITE_PIPELAB_ADVANCED=0
-ENV VITE_PIPELAB_ADVANCED=$VITE_PIPELAB_ADVANCED
 RUN npm run build
 
 FROM nginx:1.27-alpine AS web

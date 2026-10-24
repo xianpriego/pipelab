@@ -1,9 +1,9 @@
 import { useState } from "react";
-import type { Value } from "../../api/dynamic";
+import type { Value } from "../../api/components";
 import type { GraphNode, PropertyInfo } from "../../api/types";
 import { Dialog } from "../../components/Dialog";
 import { exposeParam } from "../../lib/components";
-import { formatValue, parseValue } from "../../lib/valueRefs";
+import { formatValue, parseValue } from "../../lib/paramValues";
 import { useComponentStore, useCurrentSession } from "../../store/componentStore";
 
 interface ExposeParamDialogProps {

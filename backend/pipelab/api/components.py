@@ -11,9 +11,9 @@ from pipelab.api.services import Services, get_services
 from pipelab.components.bundle import Bundle, bundle_of, conflicts
 from pipelab.components.grouping import expand_instance, group_into_component
 from pipelab.components.models import Component, component_id, references
-from pipelab.components.starters import StarterInfo
 from pipelab.components.validate import validate_component
 from pipelab.graph.models import Graph, Issue
+from pipelab.templates.info import StarterInfo
 
 router = APIRouter()
 ServicesDep = Annotated[Services, Depends(get_services)]
@@ -40,12 +40,12 @@ class ExpandResponse(BaseModel):
     graph: Graph
 
 
-class ImportRequest(BaseModel):
+class BundleImportRequest(BaseModel):
     bundle: Bundle
     overwrite: bool = False
 
 
-class ImportResult(BaseModel):
+class BundleImportResult(BaseModel):
     imported: list[str]
 
 
@@ -90,13 +90,13 @@ def install_starter(starter_id: str, services: ServicesDep) -> Component:
 
 
 @router.post("/components/import")
-def import_components(request: ImportRequest, services: ServicesDep) -> ImportResult:
+def import_components(request: BundleImportRequest, services: ServicesDep) -> BundleImportResult:
     """Saves the components of a file; 409 lists those already in the library unless ``overwrite``."""
     taken = conflicts(request.bundle, services.components.all())
     if taken and not request.overwrite:
         raise HTTPException(409, f"already in the library: {', '.join(taken)}")
     saved = [services.components.save(component).id for component in request.bundle.components]
-    return ImportResult(imported=saved)
+    return BundleImportResult(imported=saved)
 
 
 @router.get("/components/{component_id}/bundle")

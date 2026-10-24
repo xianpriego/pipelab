@@ -50,8 +50,3 @@ def topological_order(graph: Graph) -> list[str]:
     order = _kahn(graph)
     done = set(order)
     return order + [node.id for node in graph.nodes if node.id not in done]
-
-
-def cyclic_nodes(graph: Graph) -> list[str]:
-    done = set(_kahn(graph))
-    return [node.id for node in graph.nodes if node.id not in done]

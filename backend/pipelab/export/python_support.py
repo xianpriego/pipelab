@@ -1,16 +1,8 @@
-"""Generic plumbing embedded in exported Python programs that use dynamic features.
-
-It is plain library code (element helpers, slot management, rule-set wiring);
-the rules themselves are generated as explicit methods by ``python_probes``.
-"""
+"""Generic helpers embedded in exported Python programs (elements, links, ghost pads)."""
 
 SUPPORT = '''
 
-# --- Pipelab support ---------------------------------------------------------
-PASS, DROP = "pass", "drop"
-_FLUSH_EVENTS = ("flush-start", "flush-stop")
-
-
+# --- Pipelab helpers ---------------------------------------------------------
 def launch_text(value: object) -> str:
     """A value as gst-launch / Gst.util_set_object_arg parse it."""
     if isinstance(value, bool):
@@ -100,71 +92,4 @@ def expose_port(container: Gst.Bin, element: Gst.Element, pad: str, port: str, p
             ghost(inner)
 
     element.connect("pad-added", on_pad_added)
-
-
-def _comparable(value: object) -> object:
-    """Numbers (also numeric strings) compare as numbers, booleans as "true"/"false"."""
-    if value is None or isinstance(value, bool):
-        return None if value is None else launch_text(value)
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return str(value)
-
-
-def compare(left: object, op: str, right: object) -> bool:
-    a, b = _comparable(left), _comparable(right)
-    if op in ("==", "!="):
-        return (a == b) == (op == "==")
-    if not isinstance(a, float) or not isinstance(b, float):
-        return False
-    return {"<": a < b, "<=": a <= b, ">": a > b, ">=": a >= b}[op]
-
-
-def structure(name: str, fields: dict) -> Gst.Structure:
-    result = Gst.Structure.new_empty(name)
-    for key, value in fields.items():
-        if value is not None:
-            result.set_value(key, value)
-    return result
-
-
-def make_event(kind: str, downstream: bool, name: str | None = None, fields: dict | None = None) -> list:
-    if kind == "eos":
-        return [Gst.Event.new_eos()]
-    if kind == "flush":
-        return [Gst.Event.new_flush_start(), Gst.Event.new_flush_stop(True)]
-    if kind == "force-key-unit":
-        if downstream:
-            return [GstVideo.video_event_new_downstream_force_key_unit(
-                Gst.CLOCK_TIME_NONE, Gst.CLOCK_TIME_NONE, Gst.CLOCK_TIME_NONE, True, 0)]
-        return [GstVideo.video_event_new_upstream_force_key_unit(Gst.CLOCK_TIME_NONE, True, 0)]
-    custom = Gst.EventType.CUSTOM_DOWNSTREAM if downstream else Gst.EventType.CUSTOM_UPSTREAM
-    return [Gst.Event.new_custom(custom, structure(name or "pipelab-event", fields or {}))]
-
-
-def send_event(pad: Gst.Pad, events: list, downstream: bool) -> None:
-    """Downstream events are pushed from src pads and sent into sink pads (and vice versa)."""
-    is_src = pad.get_direction() == Gst.PadDirection.SRC
-    for event in events:
-        if downstream == is_src:
-            pad.push_event(event)
-        else:
-            pad.send_event(event)
-
-
-def send_to(element: Gst.Element, pad: str | None, events: list, downstream: bool) -> None:
-    """Send events through a pad of ``element`` (by name), or to the element itself."""
-    if pad:
-        send_event(pad_of(element, str(pad))[0], events, downstream)
-    else:
-        for event in events:
-            element.send_event(event)
-
-
-def expand(text: str, values: dict) -> str:
-    """Replace ``{name}`` placeholders (unknown ones are kept)."""
-    for key, value in values.items():
-        text = text.replace("{" + key + "}", str(value))
-    return text
 '''

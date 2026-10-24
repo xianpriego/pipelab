@@ -16,22 +16,9 @@ def links(ctx: RuleContext) -> list[Issue]:
     return issues
 
 
-def _slot_pads(node: Node, ctx: RuleContext) -> tuple[set[str], set[str]]:
-    """Pads of ``node`` fed by (sinks) or feeding (srcs) slot instances."""
-    sinks, srcs = set(), set()
-    for slot in ctx.graph.slots:
-        component = ctx.analyzer.components.get(slot.component)
-        ports = {p.name: p.direction for p in component.ports} if component else {}
-        for link in slot.links:
-            if link.node_id == node.id and link.port in ports:
-                (sinks if ports[link.port] == "src" else srcs).add(link.pad)
-    return sinks, srcs
-
-
 def _unlinked(node: Node, element: ElementInfo, ctx: RuleContext) -> list[Issue]:
-    slot_sinks, slot_srcs = _slot_pads(node, ctx)
-    sinks = {e.target_pad for e in ctx.graph.incoming(node.id)} | slot_sinks
-    srcs = {e.source_pad for e in ctx.graph.outgoing(node.id)} | slot_srcs
+    sinks = {e.target_pad for e in ctx.graph.incoming(node.id)}
+    srcs = {e.source_pad for e in ctx.graph.outgoing(node.id)}
     issues = []
     for template in element.pad_templates:
         if template.presence != "always":
@@ -90,21 +77,17 @@ def _dynamic_unlinked(node: Node, element: ElementInfo, sinks: set[str], srcs: s
 
 def unlinked_pads(ctx: RuleContext) -> list[Issue]:
     issues: list[Issue] = []
-    for node, element in ctx.nodes_with(lambda _n, _e: True):
+    for node, element in ctx.known_nodes():
         issues += _unlinked(node, element, ctx)
     return issues
 
 
 def endpoints(ctx: RuleContext) -> list[Issue]:
     """A runnable pipeline needs at least one source and one sink."""
-    known = ctx.nodes_with(lambda _n, _e: True)
+    known = ctx.known_nodes()
     if not known:
         return []
     directions = [{t.direction for t in element.pad_templates} for _node, element in known]
-    for slot in ctx.graph.slots:  # slot instances are sources/sinks too
-        component = ctx.analyzer.components.get(slot.component)
-        if component is not None:
-            directions.append({port.direction for port in component.ports})
     issues = []
     if not any(d == {"src"} for d in directions):
         issues.append(

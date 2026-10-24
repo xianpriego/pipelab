@@ -21,7 +21,11 @@ class RuleContext:
         self.flow = self.analyzer.flow(self.graph)
 
     def element(self, node: Node) -> ElementInfo | None:
-        return self.analyzer.catalog.get(node.factory)
+        return self.analyzer.element(node)
+
+    def known_nodes(self) -> list[tuple[Node, ElementInfo]]:
+        """Nodes whose element is in the catalog."""
+        return self.nodes_with(lambda _node, _element: True)
 
     def nodes_with(self, predicate: Callable[[Node, ElementInfo], bool]) -> list[tuple[Node, ElementInfo]]:
         result = []

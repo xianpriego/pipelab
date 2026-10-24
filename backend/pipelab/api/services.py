@@ -27,7 +27,7 @@ class Services:
         self.projects = ProjectStore(settings.projects_dir)
         self.media = MediaStore(settings.media_dir)
         self.runtime = RuntimeManager(settings.media_dir)
-        self.components = ComponentStore(settings.data_dir / "components")
+        self.components = ComponentStore(settings.components_dir)
         self._lock = threading.Lock()
         self._analyzer: Analyzer | None = None
         self._analyzer_key: tuple[int, int] | None = None

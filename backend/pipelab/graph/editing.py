@@ -1,13 +1,9 @@
-"""Low level, immutable-style graph edits shared by fixes and the importer."""
+"""Low level graph edits (in place) shared by fixes, grouping and the importer."""
 
 from __future__ import annotations
 
-import re
-
 from pipelab.catalog.models import PropertyValue
 from pipelab.graph.models import Edge, Graph, Node, Position
-
-_SUFFIX = re.compile(r"(\d+)$")
 
 
 def new_node_id(graph: Graph) -> str:
@@ -26,14 +22,18 @@ def new_edge_id(graph: Graph) -> str:
     return f"e{index}"
 
 
-def unique_name(graph: Graph, base: str) -> str:
-    """``queue`` → first of ``queue0``, ``queue1``… not used by another node."""
-    used = {node.name for node in graph.nodes}
-    stem = _SUFFIX.sub("", base) or base
+def default_name(base: str, taken: set[str]) -> str:
+    """GStreamer's naming: ``queue0``, ``queue1``…, and ``avdec_h264-0`` after a digit."""
+    separator = "-" if base[-1:].isdigit() else ""
     index = 0
-    while f"{stem}{index}" in used:
+    while f"{base}{separator}{index}" in taken:
         index += 1
-    return f"{stem}{index}"
+    return f"{base}{separator}{index}"
+
+
+def unique_name(graph: Graph, base: str) -> str:
+    """The first ``default_name`` of ``base`` not used by a node of ``graph``."""
+    return default_name(base, {node.name for node in graph.nodes})
 
 
 def add_node(
@@ -64,16 +64,6 @@ def add_edge(graph: Graph, source: str, source_pad: str, target: str, target_pad
 
 def remove_edge(graph: Graph, edge_id: str) -> None:
     graph.edges = [edge for edge in graph.edges if edge.id != edge_id]
-
-
-def retarget_edge_scripts(graph: Graph, old_edge: Edge) -> None:
-    """Scripts probe a link's source pad: follow it to the link now leaving that pad."""
-    replacement = next(
-        (e for e in graph.edges if e.source == old_edge.source and e.source_pad == old_edge.source_pad), None
-    )
-    for script in graph.scripts_for("edge", old_edge.id):
-        if replacement is not None:
-            script.target.id = replacement.id
 
 
 def downstream(graph: Graph, node_id: str) -> set[str]:

@@ -7,13 +7,10 @@ so the UI learns the pad really in use from ``notify`` instead of guessing.
 from __future__ import annotations
 
 import threading
-from collections.abc import Callable
-from typing import Any
 
 from pipelab.graph.models import Graph
 from pipelab.gst import GObject, Gst
-
-Emit = Callable[[dict[str, Any]], None]
+from pipelab.runtime.worker.events import Emit
 
 
 class SelectorWatcher:

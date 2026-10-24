@@ -8,10 +8,8 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from pipelab.api.services import Services, get_services
 from pipelab.catalog.models import ElementInfo
-from pipelab.graph.probe_schema import probe_schema
 from pipelab.gst import Gst
-from pipelab.scripts.catalog import Recipe, recipes
-from pipelab.templates.service import TemplateInfo
+from pipelab.templates.info import StarterInfo
 
 router = APIRouter()
 ServicesDep = Annotated[Services, Depends(get_services)]
@@ -48,15 +46,5 @@ def element(factory: str, services: ServicesDep) -> ElementInfo:
 
 
 @router.get("/templates")
-def templates(services: ServicesDep) -> list[TemplateInfo]:
+def templates(services: ServicesDep) -> list[StarterInfo]:
     return services.templates().list()
-
-
-@router.get("/scripts/recipes")
-def script_recipes() -> list[Recipe]:
-    return recipes()
-
-
-@router.get("/probes/schema")
-def probes_schema() -> dict[str, Any]:
-    return probe_schema()

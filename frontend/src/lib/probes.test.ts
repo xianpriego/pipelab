@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ProbeBuffer, ProbeEvent } from "../api/events";
-import { emptyProbeData, ingestProbe, ingestScript, summarize } from "./probes";
+import { emptyProbeData, ingestProbe, summarize } from "./probes";
 
 const buffer = (time: number, patch: Partial<ProbeBuffer> = {}): ProbeBuffer => ({
   kind: "buffer", time, pts: time, dts: null, duration: 0.04, size: 1000, flags: [], offset: null, ...patch,
@@ -47,29 +47,5 @@ describe("probe summary", () => {
     const data = ingestProbe(emptyProbeData(), batch("e1", [buffer(0), buffer(0.1)]), false);
     expect(summarize(data.rows, "e1").keyframeInterval).toBeNull();
     expect(summarize(data.rows, "other").buffers).toBe(0);
-  });
-});
-
-describe("script messages in the probe table", () => {
-  const message = (text: string, level: "info" | "error" = "info") => ({
-    type: "script" as const, script_id: "s1", name: "Switch", level, message: text, time: 1.5,
-  });
-
-  it("appends them as log rows sharing the cap and the pause", () => {
-    let data = ingestProbe(emptyProbeData(), batch("e1", [buffer(0)]), false);
-    data = ingestScript(data, message("switched to sink_1 at keyframe"), false);
-    expect(data.rows[1]).toMatchObject({
-      seq: 2, edgeId: "", scriptId: "s1", item: { kind: "log", message: "switched to sink_1 at keyframe" },
-    });
-    expect(ingestScript(data, message("later"), true).skipped).toBe(1);
-    let capped = emptyProbeData();
-    for (let i = 0; i < 4; i += 1) capped = ingestScript(capped, message(`m${i}`), false, 2);
-    expect(capped.rows.map((row) => (row.item.kind === "log" ? row.item.message : ""))).toEqual(["m2", "m3"]);
-  });
-
-  it("are not counted in link summaries", () => {
-    const data = ingestScript(ingestProbe(emptyProbeData(), batch("e1", [buffer(0)]), false), message("x"), false);
-    expect(summarize(data.rows, "e1").buffers).toBe(1);
-    expect(summarize(data.rows, "").buffers).toBe(0);
   });
 });

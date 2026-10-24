@@ -25,8 +25,8 @@ def gpu(catalog):
 
 
 @pytest.fixture(scope="module")
-def client(gpu, tmp_path_factory):
-    with api_client(tmp_path_factory.mktemp("gpu")) as client:
+def client(gpu, data_dir):
+    with api_client(data_dir) as client:
         yield client
 
 

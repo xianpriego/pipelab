@@ -1,12 +1,13 @@
 from pipelab.graph.fixes import apply_fix
 from pipelab.graph.models import Fix, FixElement, PadRef
 from pipelab.graph.validate import validate_graph
-from tests.helpers import chain, graph
+from tests.helpers import chain, graph, named_links
 
 
 def _links(g):
-    names = {n.id: n.name for n in g.nodes}
-    return sorted(f"{names[e.source]}.{e.source_pad}->{names[e.target]}.{e.target_pad}" for e in g.edges)
+    return sorted(
+        f"{source}.{src_pad}->{target}.{sink_pad}" for source, src_pad, target, sink_pad in named_links(g)
+    )
 
 
 def test_insert_on_edge_creates_chain(analyzer):

@@ -1,6 +1,6 @@
-from pipelab.graph.bridge import concrete_caps
 from pipelab.graph.caps_flow import CapsFlow
 from pipelab.gst import Gst
+from pipelab.gst.caps import concrete_caps
 from tests.helpers import chain, graph
 
 

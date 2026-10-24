@@ -8,12 +8,11 @@ from __future__ import annotations
 
 import threading
 import time
-from collections.abc import Callable
 from typing import Any
 
 from pipelab.gst import Gst
+from pipelab.runtime.worker.events import Emit
 
-Emit = Callable[[dict[str, Any]], None]
 MAX_BATCH = 100
 _PROBE_TYPES = Gst.PadProbeType.BUFFER | Gst.PadProbeType.BUFFER_LIST | Gst.PadProbeType.EVENT_DOWNSTREAM
 _OFFSET_NONE = 0xFFFFFFFFFFFFFFFF

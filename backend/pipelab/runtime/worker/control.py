@@ -6,7 +6,7 @@ from typing import Any
 
 from pipelab.gst import GObject, Gst
 from pipelab.gst.values import to_json_value
-from pipelab.runtime.worker.builder import apply_property, is_pad_property
+from pipelab.runtime.worker.properties import apply_property, is_pad_property
 
 _HIDDEN = {"name", "parent"}
 

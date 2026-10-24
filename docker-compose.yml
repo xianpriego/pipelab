@@ -12,7 +12,7 @@ services:
     environment:
       PIPELAB_DATA_DIR: /data
     volumes:
-      - ./data:/data
+      - ${PIPELAB_DATA:-./data}:/data
     expose:
       - "8000"
     healthcheck:
@@ -25,9 +25,6 @@ services:
   web:
     build:
       context: ./frontend
-      args:
-        # 1 shows slots, API functions, probe rules and scripts in the editor (hidden by default).
-        VITE_PIPELAB_ADVANCED: ${PIPELAB_ADVANCED:-0}
     image: pipelab-web
     restart: unless-stopped
     ports:
@@ -65,7 +62,7 @@ services:
       PIPELAB_TEST_CACHE: /tmp/pipelab-test-cache
     volumes:
       - cargo-cache:/cargo
-    command: ["pytest", "-q", "tests/test_export_dynamic_rust.py"]
+    command: ["pytest", "-q", "tests/test_export_rust.py"]
 
   web-test:
     profiles: ["test"]

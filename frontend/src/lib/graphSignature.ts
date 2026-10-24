@@ -12,16 +12,7 @@ export function graphSignature(graph: Graph): string {
   const edges = [...graph.edges]
     .map(({ source, source_pad, target, target_pad }) => `${source}.${source_pad}>${target}.${target_pad}`)
     .sort();
-  // Scripts run inside the pipeline: editing an enabled one needs a restart too.
-  const scripts = (graph.scripts ?? [])
-    .filter((script) => script.enabled)
-    .map(({ id, target, code }) => `${id}@${target.kind}:${target.id}:${code}`)
-    .sort();
-  // Probe rules, slots and API functions are built into the pipeline as well.
-  const probes = (graph.probes ?? []).filter((probe) => probe.enabled).map((probe) => JSON.stringify(probe)).sort();
-  const slots = (graph.slots ?? []).map((slot) => JSON.stringify(slot)).sort();
-  const functions = (graph.functions ?? []).map((fn) => JSON.stringify(fn)).sort();
-  return JSON.stringify({ nodes, edges, scripts, probes, slots, functions });
+  return JSON.stringify({ nodes, edges });
 }
 
 /** The graph as it is running after a property was changed live. */

@@ -8,6 +8,7 @@ from functools import lru_cache
 from pipelab.catalog.classify import inferred_any_caps
 from pipelab.catalog.models import CatalogData, ElementInfo, ElementSummary, PadTemplateInfo
 from pipelab.gst import Gst
+from pipelab.gst.caps import parse_caps
 
 _PAD_PATTERN = {"%u": r"\d+", "%d": r"-?\d+", "%s": r".+"}
 
@@ -22,12 +23,6 @@ def template_regex(template_name: str) -> re.Pattern[str]:
 
 def is_template_name(pad_name: str) -> bool:
     return any(token in pad_name for token in _PAD_PATTERN)
-
-
-@lru_cache(maxsize=4096)
-def parse_caps(caps_string: str) -> Gst.Caps:
-    caps = Gst.Caps.from_string(caps_string) if caps_string else None
-    return caps if caps is not None else Gst.Caps.new_any()
 
 
 class Catalog:

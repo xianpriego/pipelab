@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, errorMessage } from "../../api/client";
-import type { StarterInfo } from "../../api/dynamic";
+import type { StarterInfo } from "../../api/components";
 import { Dialog } from "../../components/Dialog";
 import { useComponentStore } from "../../store/componentStore";
 import { installStarter } from "./componentActions";

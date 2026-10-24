@@ -4,6 +4,7 @@
 ##   make dev           hot-reload mode (UI on http://localhost:5173)
 ##   make test          backend, frontend and browser end-to-end suites (and linters)
 ##   make test-rust     compile and run the Rust exports (cargo, crates cached in a volume)
+##   make docs GPU=1    regenerate the user manual screenshots (separate stack, empty data)
 
 export PIPELAB_UID ?= $(shell id -u)
 export PIPELAB_GID ?= $(shell id -g)
@@ -20,7 +21,7 @@ COMPOSE_FILES += -f docker-compose.dev.yml
 endif
 COMPOSE := docker compose $(COMPOSE_FILES)
 
-.PHONY: help build up dev down restart logs ps test test-backend test-frontend test-e2e test-rust shell clean-cache
+.PHONY: help build up dev down restart logs ps test test-backend test-frontend test-e2e test-rust docs shell clean-cache
 
 help:
 	@grep -E '^##' Makefile | sed 's/^## \{0,1\}//'
@@ -64,6 +65,16 @@ test-frontend:
 test-e2e: data
 	mkdir -p e2e/test-results
 	$(COMPOSE) --profile test run --rm --build e2e
+
+# The manual is shot on a separate stack with empty data (your projects stay out of it).
+DOCS_COMPOSE := PIPELAB_DATA=./.docs-data PIPELAB_PORT=8089 $(COMPOSE) -p pipelab-docs
+
+docs: data
+	rm -rf .docs-data && mkdir -p .docs-data docs/manual/images e2e/test-results
+	cp -r data/cache .docs-data/ 2>/dev/null || true
+	$(DOCS_COMPOSE) --profile test run --rm --build -e DOCS_DIR=/e2e/docs-images \
+		-v $(CURDIR)/docs/manual/images:/e2e/docs-images e2e npx playwright test tests/docs.spec.ts; \
+		status=$$?; $(DOCS_COMPOSE) down; rm -rf .docs-data; exit $$status
 
 shell:
 	$(COMPOSE) exec api bash

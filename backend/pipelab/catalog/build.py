@@ -1,4 +1,4 @@
-"""Supervises the catalog builder subprocess, surviving crashing elements."""
+"""Supervises the catalog describe worker subprocess, surviving crashing elements."""
 
 from __future__ import annotations
 
@@ -58,9 +58,9 @@ class _BuildState:
     total: int = 0
 
 
-def _run_builder(state: _BuildState, timeout: float, progress: ProgressCallback) -> bool:
-    """Run one builder process. Returns True when it reached the end."""
-    command = [sys.executable, "-m", "pipelab.catalog.builder"]
+def _run_worker(state: _BuildState, timeout: float, progress: ProgressCallback) -> bool:
+    """Run one describe worker process. Returns True when it reached the end."""
+    command = [sys.executable, "-m", "pipelab.catalog.describe_worker"]
     if state.last_done:
         command += ["--after", state.last_done]
     if state.no_instantiate:
@@ -82,6 +82,9 @@ def _run_builder(state: _BuildState, timeout: float, progress: ProgressCallback)
                 state.elements[info.name] = info
                 state.last_done, current = info.name, None
                 progress(len(state.elements), state.total)
+            elif kind == "failed":
+                state.skipped.append(event["name"])
+                state.last_done, current = event["name"], None
             elif kind == "done":
                 return True
     finally:
@@ -93,7 +96,7 @@ def _run_builder(state: _BuildState, timeout: float, progress: ProgressCallback)
 
 def _handle_failure(state: _BuildState, current: str | None) -> None:
     if current is None:
-        raise RuntimeError("catalog builder exited before describing any element")
+        raise RuntimeError("the catalog describe worker exited before describing any element")
     if current in state.no_instantiate:
         state.skipped.append(current)
         state.last_done = current
@@ -104,7 +107,7 @@ def _handle_failure(state: _BuildState, current: str | None) -> None:
 def build_catalog(timeout: float = 30.0, progress: ProgressCallback | None = None) -> CatalogData:
     state = _BuildState()
     report = progress or (lambda _done, _total: None)
-    while not _run_builder(state, timeout, report):
+    while not _run_worker(state, timeout, report):
         pass
     return CatalogData(
         gstreamer_version=Gst.version_string(),

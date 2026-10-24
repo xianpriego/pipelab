@@ -9,13 +9,14 @@ from pydantic import BaseModel
 
 from pipelab.api.services import Services, get_services
 from pipelab.export import FORMATS, export_graph
-from pipelab.export.models import ExportFormat, ExportRequest, ExportResult, ImportRequest, ImportResult
+from pipelab.export.models import ExportFormat, ExportRequest, ExportResult
 from pipelab.graph.fixes import apply_fix
 from pipelab.graph.layout import auto_layout
 from pipelab.graph.link_check import check_link
 from pipelab.graph.models import Edge, Fix, Graph, Issue, LinkCheckResult
 from pipelab.graph.validate import validate_graph
 from pipelab.importer import import_gst_launch
+from pipelab.importer.models import ImportRequest, ImportResult
 
 router = APIRouter()
 ServicesDep = Annotated[Services, Depends(get_services)]

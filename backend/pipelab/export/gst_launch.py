@@ -14,7 +14,6 @@ from dataclasses import dataclass, field
 
 from pipelab.catalog.store import Catalog, is_template_name
 from pipelab.export.common import ElementSpec, build_spec, identifier
-from pipelab.export.script_notes import comment_block, script_notes
 from pipelab.graph.models import Edge, Graph, Node
 
 _SAFE_VALUE = re.compile(r"^[\w.:/+\-@%]+$")
@@ -225,5 +224,4 @@ def render(graph: Graph, catalog: Catalog, name: str) -> str:
     if dropped:
         header.append("# Pad-typed properties cannot be set from gst-launch; set them in code:")
         header += [f"#   {item}" for item in dropped]
-    notes = comment_block(script_notes(graph, "shell"), "shell")
-    return "\n".join(header) + "\n" + render_command(graph, catalog) + "\n" + notes
+    return "\n".join(header) + "\n" + render_command(graph, catalog) + "\n"

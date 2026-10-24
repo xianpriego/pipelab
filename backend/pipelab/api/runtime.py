@@ -9,19 +9,12 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Response, WebSocket, WebSocketDisconnect
 
 from pipelab.api.services import Services, get_services
-from pipelab.components.models import used_components
+from pipelab.components.models import Component, component_id, used_components
+from pipelab.graph.models import Graph, Node
 from pipelab.graph.property_check import check_value
-from pipelab.runtime.models import (
-    CallRequest,
-    LinkToggle,
-    PropertyChange,
-    RuntimeStatus,
-    SignalRequest,
-    StartRequest,
-    StopRequest,
-    TriggerRequest,
-)
+from pipelab.runtime.models import LinkToggle, PropertyChange, RuntimeStatus, StartRequest, StopRequest
 from pipelab.runtime.session import RuntimeCommandError, RuntimeSession
+from pipelab.storage.projects import ProjectNotFound
 
 router = APIRouter(prefix="/projects/{project_id}/runtime")
 ServicesDep = Annotated[Services, Depends(get_services)]
@@ -62,6 +55,14 @@ async def _command(project_id: str, services: Services, command: dict[str, Any])
     return session.status
 
 
+async def _request(project_id: str, services: Services, command: dict[str, Any]) -> dict[str, Any]:
+    """A command answered by the worker; 409 when the pipeline is not running."""
+    try:
+        return await _session(project_id, services).request(command)
+    except RuntimeCommandError as error:
+        raise HTTPException(409, str(error)) from error
+
+
 @router.post("/play")
 async def play(project_id: str, services: ServicesDep) -> RuntimeStatus:
     return await _command(project_id, services, {"cmd": "play"})
@@ -79,10 +80,25 @@ async def stop(project_id: str, request: StopRequest, services: ServicesDep) -> 
     return session.status
 
 
-def _validate_change(services: Services, project_id: str, change: PropertyChange) -> None:
-    node = services.projects.get(project_id).graph.node(change.node_id)
+def _running_node(graph: Graph, node_id: str, components: dict[str, Component]) -> Node | None:
+    """The node behind a runtime id; ``"<instance>/<inner>"`` ids are looked up in components."""
+    *path, local = node_id.split("/")
+    for instance_id in path:
+        instance = graph.node(instance_id)
+        definition = components.get(component_id(instance.factory) or "") if instance else None
+        if definition is None:
+            return None
+        graph = definition.graph
+    return graph.node(local)
+
+
+def _validate_change(services: Services, session: RuntimeSession, change: PropertyChange) -> None:
+    """Reject changes the running element cannot take (checked against the graph that is running)."""
+    if session.graph is None or change.pad:
+        return
+    node = _running_node(session.graph, change.node_id, services.component_definitions())
     element = services.full_catalog().get(node.factory) if node else None
-    if element is None or change.pad:
+    if element is None:
         return
     prop = element.property(change.property)
     if prop is None or not prop.writable or prop.construct_only:
@@ -93,71 +109,31 @@ def _validate_change(services: Services, project_id: str, change: PropertyChange
 
 @router.post("/property")
 async def set_property(project_id: str, change: PropertyChange, services: ServicesDep) -> dict[str, Any]:
-    _validate_change(services, project_id, change)
-    command = {"cmd": "set_property", **change.model_dump()}
-    try:
-        return await _session(project_id, services).request(command)
-    except RuntimeCommandError as error:
-        raise HTTPException(409, str(error)) from error
+    _validate_change(services, _session(project_id, services), change)
+    return await _request(project_id, services, {"cmd": "set_property", **change.model_dump()})
 
 
-@router.get("/properties/{node_id}")
+@router.get("/properties/{node_id:path}")
 async def properties(project_id: str, node_id: str, services: ServicesDep) -> dict[str, Any]:
-    try:
-        data = await _session(project_id, services).request({"cmd": "get_properties", "node_id": node_id})
-    except RuntimeCommandError as error:
-        raise HTTPException(409, str(error)) from error
+    data = await _request(project_id, services, {"cmd": "get_properties", "node_id": node_id})
     return {"node_id": node_id, **data}
-
-
-async def _link_command(project_id: str, services: Services, command: dict[str, Any]) -> dict[str, Any]:
-    try:
-        return await _session(project_id, services).request(command)
-    except RuntimeCommandError as error:
-        raise HTTPException(409, str(error)) from error
 
 
 @router.post("/tap")
 async def tap(project_id: str, request: LinkToggle, services: ServicesDep) -> dict[str, Any]:
     """Preview what flows through a link."""
-    return await _link_command(project_id, services, {"cmd": "tap", **request.model_dump()})
+    return await _request(project_id, services, {"cmd": "tap", **request.model_dump()})
 
 
 @router.post("/probe")
 async def probe(project_id: str, request: LinkToggle, services: ServicesDep) -> dict[str, Any]:
     """Record the buffers and events crossing a link (sent as ``probe`` events)."""
-    return await _link_command(project_id, services, {"cmd": "probe", **request.model_dump()})
-
-
-@router.post("/trigger")
-async def trigger(project_id: str, request: TriggerRequest, services: ServicesDep) -> dict[str, Any]:
-    """Run the ``on_trigger`` callback of a probe script."""
-    return await _link_command(project_id, services, {"cmd": "trigger", **request.model_dump()})
-
-
-@router.post("/call")
-async def call(project_id: str, request: CallRequest, services: ServicesDep) -> dict[str, Any]:
-    """Call a pipeline API function (custom or a built-in slot function)."""
-    return await _link_command(project_id, services, {"cmd": "call", **request.model_dump()})
-
-
-@router.post("/signal")
-async def signal(project_id: str, request: SignalRequest, services: ServicesDep) -> dict[str, Any]:
-    """Fire the ``signal`` rules of a probe rule set."""
-    return await _link_command(project_id, services, {"cmd": "signal", **request.model_dump()})
-
-
-@router.get("/instances")
-async def instances(project_id: str, services: ServicesDep) -> dict[str, Any]:
-    return await _link_command(project_id, services, {"cmd": "instances"})
+    return await _request(project_id, services, {"cmd": "probe", **request.model_dump()})
 
 
 @router.get("/dot")
 async def dot(project_id: str, services: ServicesDep) -> Response:
-    try:
-        data = await _session(project_id, services).request({"cmd": "dot"})
-    except RuntimeCommandError as error:
-        raise HTTPException(409, str(error)) from error
+    data = await _request(project_id, services, {"cmd": "dot"})
     process = await asyncio.create_subprocess_exec(
         "dot", "-Tsvg", stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE
     )
@@ -168,6 +144,11 @@ async def dot(project_id: str, services: ServicesDep) -> Response:
 @router.websocket("/ws")
 async def events(websocket: WebSocket, project_id: str) -> None:
     services: Services = websocket.app.state.services
+    try:
+        services.projects.get(project_id)
+    except ProjectNotFound:
+        await websocket.close(code=4404)  # before accept: the handshake is refused
+        return
     session = services.runtime.session(project_id)
     await websocket.accept()
     queue = session.subscribe()

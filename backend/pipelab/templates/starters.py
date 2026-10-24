@@ -2,7 +2,7 @@
 
 They are written as gst-launch descriptions and turned into graphs with the
 importer, so they double as living documentation of idiomatic pipelines.
-Relative file names resolve inside the media directory (/data/media).
+Relative file names resolve inside the media directory (``data/media``).
 """
 
 from __future__ import annotations

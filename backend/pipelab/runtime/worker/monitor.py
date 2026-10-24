@@ -4,14 +4,13 @@ from __future__ import annotations
 
 import threading
 import time
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
 from pipelab.gst import Gst
+from pipelab.runtime.worker.events import Emit
 from pipelab.runtime.worker.perf import LatencyTracker, LinkTiming
 
-Emit = Callable[[dict[str, Any]], None]
 _PROBE_TYPES = Gst.PadProbeType.BUFFER | Gst.PadProbeType.BUFFER_LIST
 
 

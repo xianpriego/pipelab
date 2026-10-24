@@ -12,14 +12,15 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
-from pipelab.catalog.store import template_regex
 from pipelab.components.models import Component, ComponentPort, component_id
 from pipelab.graph.models import Edge, Graph, Node
 from pipelab.gst import Gst
-from pipelab.runtime.worker.builder import BuiltPipeline, apply_property, create_element, is_pad_property
-from pipelab.runtime.worker.encoder import PreviewSettings
-from pipelab.runtime.worker.links import Linker, get_pad
-from pipelab.runtime.worker.previews import preview_kind
+from pipelab.runtime.worker.encoder import FrameEncoder, PreviewSettings
+from pipelab.runtime.worker.events import Emit
+from pipelab.runtime.worker.links import Linker
+from pipelab.runtime.worker.pads import get_pad, pad_matches
+from pipelab.runtime.worker.previews import preview_kind, preview_sink
+from pipelab.runtime.worker.properties import apply_property, is_pad_property
 
 OnLinked = Callable[[str, Edge, Gst.Pad], None]  # (global edge id, edge, source pad)
 
@@ -40,12 +41,42 @@ class Scope:
         return f"{self.prefix}{local_id}"
 
 
+@dataclass
+class BuiltPipeline:
+    pipeline: Gst.Pipeline
+    elements: dict[str, Gst.Element] = field(default_factory=dict)  # global node id → element
+    element_ids: dict[Gst.Element, str] = field(default_factory=dict)  # element → global node id
+    scopes: list[Scope] = field(default_factory=list)  # top level first
+    errors: list[tuple[Node | None, str]] = field(default_factory=list)
+    notes: list[tuple[Node, str]] = field(default_factory=list)
+    encoders: list[FrameEncoder] = field(default_factory=list)
+
+    def close_previews(self) -> None:
+        for encoder in self.encoders:
+            encoder.close()
+
+
+def create_element(
+    node: Node, settings: PreviewSettings, emit: Emit, built: BuiltPipeline
+) -> Gst.Element | None:
+    """The element for ``node``: the factory itself, or a browser preview for display sinks."""
+    kind = preview_kind(node)
+    if kind is None:
+        return Gst.ElementFactory.make(node.factory, node.name)
+    element, encoder = preview_sink(node, kind, settings, emit)
+    built.encoders.append(encoder)
+    ignored = sorted(set(node.properties) - {"sync"})
+    note = f"{node.factory} is shown in the Preview tab"
+    built.notes.append((node, note + (f" (ignored: {', '.join(ignored)})" if ignored else "")))
+    return element
+
+
 class Assembler:
     def __init__(
         self,
         components: dict[str, Component],
         preview: PreviewSettings,
-        emit: Callable[..., None],
+        emit: Emit,
         built: BuiltPipeline,
         on_linked: OnLinked,
     ) -> None:
@@ -90,7 +121,7 @@ class Assembler:
             if component is None:
                 self._built.errors.append((node, f"Component '{definition}' is not in the library"))
                 return None
-            return self.build_instance(node.name, component, node.properties, scope.global_id(node.id) + "/")
+            return self._build_instance(node.name, component, node.properties, scope.global_id(node.id) + "/")
         element = create_element(node, self._preview, self._emit, self._built)
         if element is None:
             self._built.errors.append(
@@ -103,7 +134,9 @@ class Assembler:
                     self._built.errors.append((node, f"{node.name}: {error}"))
         return element
 
-    def build_instance(self, name: str, component: Component, params: dict[str, Any], prefix: str) -> Gst.Bin:
+    def _build_instance(
+        self, name: str, component: Component, params: dict[str, Any], prefix: str
+    ) -> Gst.Bin:
         """A GstBin running ``component`` with ``params``; one ghost pad per port."""
         container = Gst.Bin.new(name)
         scope = self.build_scope(component.graph, container, prefix, instance=name)
@@ -133,12 +166,7 @@ class Assembler:
             return
 
         def on_pad_added(_element: Gst.Element, new_pad: Gst.Pad) -> None:  # sometimes pad → late ghost
-            template = new_pad.get_pad_template()
-            name = template.name_template if template else new_pad.get_name()
-            matches = port.pad in (new_pad.get_name(), name) or template_regex(port.pad).match(
-                new_pad.get_name()
-            )
-            if matches and container.get_static_pad(port.name) is None:
+            if pad_matches(new_pad, port.pad) and container.get_static_pad(port.name) is None:
                 ghost = Gst.GhostPad.new(port.name, new_pad)
                 ghost.set_active(True)
                 container.add_pad(ghost)

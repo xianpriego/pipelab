@@ -1,4 +1,4 @@
-"""Loads the generated module given on the command line (shared by the scenario drivers)."""
+"""Loads the generated module given on the command line."""
 
 import importlib.util
 import sys
@@ -10,8 +10,3 @@ def load():
     spec.loader.exec_module(module)
     module.Gst.init(None)
     return module
-
-
-def after(module, ms: int, action) -> None:
-    """Run ``action`` once on the main loop after ``ms`` milliseconds."""
-    module.GLib.timeout_add(ms, lambda: action() and False)

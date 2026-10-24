@@ -7,21 +7,11 @@ import re
 from pipelab.catalog.models import PropertyInfo, PropertyValue
 from pipelab.gst import Gst
 from pipelab.gst.caps import parse_structure
+from pipelab.gst.values import FALSE_WORDS, TRUE_WORDS, parse_number
 
 _INTEGER_TYPES = {"int", "uint", "int64", "uint64"}
 _FLOAT_TYPES = {"float", "double"}
 _FRACTION = re.compile(r"^\s*-?\d+\s*/\s*\d+\s*$|^\s*-?\d+\s*$")
-
-
-def _number(value: PropertyValue, integer: bool) -> float | int | None:
-    if isinstance(value, bool):
-        return None
-    if isinstance(value, int | float):
-        return value if not integer or float(value).is_integer() else None
-    try:
-        return int(value, 0) if integer else float(value)
-    except ValueError:
-        return None
 
 
 def _check_range(prop: PropertyInfo, number: float) -> str | None:
@@ -41,11 +31,11 @@ def check_value(prop: PropertyInfo, value: PropertyValue) -> str | None:
     """Error message when ``value`` cannot be applied to ``prop``, else ``None``."""
     kind = prop.type
     if kind == "boolean":
-        if isinstance(value, bool) or str(value).lower() in {"true", "false", "1", "0", "yes", "no"}:
+        if isinstance(value, bool) or str(value).strip().lower() in TRUE_WORDS | FALSE_WORDS:
             return None
         return f"{prop.name} expects true or false"
     if kind in _INTEGER_TYPES or kind in _FLOAT_TYPES:
-        number = _number(value, kind in _INTEGER_TYPES)
+        number = parse_number(value, kind in _INTEGER_TYPES)
         if number is None:
             return f"{prop.name} expects {'an integer' if kind in _INTEGER_TYPES else 'a number'}"
         return _check_range(prop, number)

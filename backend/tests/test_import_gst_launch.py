@@ -7,15 +7,11 @@ from collections import Counter
 import pytest
 
 from pipelab.export.gst_launch import render_description
+from pipelab.graph.editing import default_name
 from pipelab.graph.models import Graph
 from pipelab.gst import Gst
 from pipelab.importer import import_gst_launch
-from pipelab.importer.gst_launch import default_name
-
-
-def links(graph: Graph) -> list[tuple[str, str, str, str]]:
-    name = {n.id: n.name for n in graph.nodes}
-    return [(name[e.source], e.source_pad, name[e.target], e.target_pad) for e in graph.edges]
+from tests.helpers import named_links
 
 
 def test_values_are_typed_from_the_catalog(catalog):
@@ -43,27 +39,27 @@ def test_caps_become_capsfilters(catalog):
     ).graph
     assert graph.nodes[1].factory == "capsfilter"
     assert graph.nodes[1].properties == {"caps": "video/x-raw(memory:CUDAMemory), format=NV12"}
-    assert links(graph)[0] == ("videotestsrc0", "src", "capsfilter0", "sink")
+    assert named_links(graph)[0] == ("videotestsrc0", "src", "capsfilter0", "sink")
 
 
 def test_muxer_pads_follow_caps_and_forward_references(catalog):
     graph = import_gst_launch(
         "audiotestsrc ! avenc_aac ! mux. videotestsrc ! x264enc ! mux. mp4mux name=mux ! fakesink", catalog
     ).graph
-    assert ("avenc_aac0", "src", "mux", "audio_0") in links(graph)
-    assert ("x264enc0", "src", "mux", "video_0") in links(graph)
+    assert ("avenc_aac0", "src", "mux", "audio_0") in named_links(graph)
+    assert ("x264enc0", "src", "mux", "video_0") in named_links(graph)
 
 
 def test_explicit_request_template_gets_a_concrete_pad(catalog):
     graph = import_gst_launch("videotestsrc ! x264enc ! m.video_%u mp4mux name=m ! fakesink", catalog).graph
-    assert ("x264enc0", "src", "m", "video_0") in links(graph)
+    assert ("x264enc0", "src", "m", "video_0") in named_links(graph)
 
 
 def test_tee_requests_consecutive_pads(catalog):
     graph = import_gst_launch(
         "videotestsrc ! tee name=t ! fakesink t. ! fakesink t. ! fakesink", catalog
     ).graph
-    assert [link[1] for link in links(graph) if link[0] == "t"] == ["src_0", "src_1", "src_2"]
+    assert [link[1] for link in named_links(graph) if link[0] == "t"] == ["src_0", "src_1", "src_2"]
 
 
 def test_demuxer_pads_follow_the_downstream_media(catalog):
@@ -72,13 +68,13 @@ def test_demuxer_pads_follow_the_downstream_media(catalog):
         "d. ! queue ! aacparse ! fakesink d. ! queue ! h264parse ! fakesink",
         catalog,
     ).graph
-    assert ("d", "audio_%u", "queue0", "sink") in links(graph)
-    assert ("d", "video_%u", "queue1", "sink") in links(graph)
+    assert ("d", "audio_%u", "queue0", "sink") in named_links(graph)
+    assert ("d", "video_%u", "queue1", "sink") in named_links(graph)
 
 
 def test_concrete_sometimes_pad_maps_to_its_template(catalog):
     graph = import_gst_launch("filesrc ! qtdemux name=d d.video_0 ! fakesink", catalog).graph
-    assert ("d", "video_%u", "fakesink0", "sink") in links(graph)
+    assert ("d", "video_%u", "fakesink0", "sink") in named_links(graph)
 
 
 def test_pad_properties_are_typed(catalog):
@@ -88,7 +84,7 @@ def test_pad_properties_are_typed(catalog):
         catalog,
     ).graph
     assert graph.node_by_name("c").pad_properties == {"sink_1": {"xpos": 320, "alpha": 0.5}}
-    assert ("videotestsrc1", "src", "c", "sink_1") in links(graph)
+    assert ("videotestsrc1", "src", "c", "sink_1") in named_links(graph)
 
 
 def test_problems_become_warnings(catalog):

@@ -36,8 +36,8 @@ def update_project(project_id: str, patch: ProjectUpdate, services: ServicesDep)
 
 @router.delete("/{project_id}", status_code=204)
 async def delete_project(project_id: str, services: ServicesDep) -> Response:
-    await services.runtime.session(project_id).stop("kill")
     services.projects.delete(project_id)
+    await services.runtime.discard(project_id)
     return Response(status_code=204)
 
 

@@ -12,7 +12,7 @@ import re
 from dataclasses import dataclass
 
 from pipelab.gst import Gst
-from pipelab.gst.caps import media_types
+from pipelab.gst.caps import describe_caps, media_types
 
 
 @dataclass(frozen=True)
@@ -49,9 +49,7 @@ def mismatch(caps: Gst.Caps, accepted: Gst.Caps) -> str:
     """Human description of why ``caps`` is not a subset of ``accepted``."""
     media = caps.get_structure(0).get_name()
     if not _only_field(caps, "").can_intersect(accepted):
-        return (
-            f"{', '.join(media_types(caps))} is not accepted (accepts {', '.join(media_types(accepted)[:4])})"
-        )
+        return f"{', '.join(media_types(caps))} is not accepted (accepts {describe_caps(accepted)})"
     structure = caps.get_structure(0)
     reasons = []
     for index in range(structure.n_fields()):

@@ -35,20 +35,6 @@ function FlowEdgeView(props: EdgeProps<PipelineFlowEdge>) {
   const threadColor = running && threadOverlay ? data?.thread?.color : undefined;
   if (threadColor) classes.push("by-thread");
   const showLabel = running && Boolean(stats) && !discarded;
-  const scripts = data?.scripts;
-  const probes = data?.probes;
-  const scriptBadge = scripts || probes ? (
-    <>
-      {scripts ? (
-        <span className={`script-badge${scripts.enabled ? "" : " disabled"}`}
-          title={`Probe scripts: ${scripts.names.join(", ")}${scripts.enabled ? "" : " (disabled)"}`}>ƒ</span>
-      ) : null}
-      {probes ? (
-        <span className={`probe-badge${probes.enabled ? "" : " disabled"}`} data-testid="probe-badge"
-          title={`No-code probes: ${probes.names.join(", ")}${probes.enabled ? "" : " (disabled)"}`}>◉</span>
-      ) : null}
-    </>
-  ) : null;
   const showTools = running && (hovered || Boolean(selected));
   // Labels sit just above the link so the line and its travelling buffers stay visible.
   const labelStyle = { transform: `translate(-50%, -100%) translate(${labelX}px, ${labelY - 5}px)` };
@@ -65,11 +51,8 @@ function FlowEdgeView(props: EdgeProps<PipelineFlowEdge>) {
             title={data?.caps ?? "caps not negotiated yet"}>
             {tapped ? <Icon name="eye" size={10} /> : null}
             {probed ? <Icon name="search" size={10} /> : null}
-            {scriptBadge}
             {formatFps(stats.fps)} · {formatBitrate(stats.bitrate)}
           </div>
-        ) : scriptBadge && !(running && discarded) ? (
-          <div className="edge-label script-only nodrag nopan" style={labelStyle}>{scriptBadge}</div>
         ) : null}
         {running && discarded ? (
           <div className="edge-label dropped nodrag nopan" style={labelStyle}

@@ -1,6 +1,5 @@
 // Runtime events streamed by the worker through the websocket.
 
-import type { SlotInstance } from "./dynamic";
 import type { PropertyValue, RuntimeState } from "./types";
 
 export type BusKind =
@@ -29,7 +28,7 @@ export interface BusEvent {
   hint?: string | null;
   fields?: Record<string, unknown> | null;
   time?: number | null;
-  /** Application messages (``post-message``): structure name. */
+  /** Application messages: structure name. */
   name?: string | null;
 }
 
@@ -96,8 +95,6 @@ export interface PropertyEvent {
   pad?: string | null;
   /** "runtime" when the element changed the value by itself (e.g. auto-selected pad). */
   origin?: "runtime" | "user";
-  /** A script took the change over: ``value`` is still the old one. */
-  deferred?: boolean;
 }
 
 export interface ProbeBuffer {
@@ -127,35 +124,6 @@ export interface ProbeEvent {
   items: ProbeItem[];
 }
 
-export type ScriptLevel = "info" | "warning" | "error";
-
-/** Message from a probe script (``ctx.log`` or a script failure). */
-export interface ScriptEvent {
-  type: "script";
-  script_id: string;
-  name: string;
-  level: ScriptLevel;
-  message: string;
-  time?: number | null;
-  fields?: Record<string, unknown> | null;
-}
-
-/** Live instances of a slot after an add/remove/restart. */
-export interface InstancesEvent {
-  type: "instances";
-  slot: string;
-  instances: SlotInstance[];
-}
-
-/** ``log`` action of a probe rule set ("<instance>/<probe id>" inside components). */
-export interface ProbeLogEvent {
-  type: "probe-log";
-  probe: string;
-  level: ScriptLevel;
-  message: string;
-  time?: number | null;
-}
-
 export interface ReplyEvent {
   type: "reply";
   request_id: string;
@@ -168,8 +136,7 @@ export interface LogEvent {
 }
 
 export type RuntimeEvent =
-  | StateEvent | BusEvent | StatsEvent | CapsEvent | PropertyEvent | ReplyEvent | LogEvent | ProbeEvent | ScriptEvent
-  | InstancesEvent | ProbeLogEvent;
+  | StateEvent | BusEvent | StatsEvent | CapsEvent | PropertyEvent | ReplyEvent | LogEvent | ProbeEvent;
 
 interface FrameHeaderBase {
   type?: "preview";
@@ -200,7 +167,7 @@ export interface PreviewFrame {
 }
 
 const EVENT_TYPES = new Set([
-  "state", "bus", "stats", "caps", "property", "reply", "log", "probe", "script", "instances", "probe-log",
+  "state", "bus", "stats", "caps", "property", "reply", "log", "probe",
 ]);
 
 export function parseRuntimeEvent(text: string): RuntimeEvent | null {

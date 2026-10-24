@@ -11,8 +11,6 @@ function tooltip(spec: HandleSpec): string {
 /** Radio of a selector pad (input-selector sink_N, output-selector src_N). */
 export interface PadChoice {
   active: boolean;
-  /** Requested but deferred by a script (e.g. until the next keyframe). */
-  pending?: boolean;
   onSelect: () => void;
 }
 
@@ -24,19 +22,16 @@ function ChoiceButton({ spec, choice }: { spec: HandleSpec; choice: PadChoice })
   return (
     <button
       type="button"
-      className={`pad-choice nodrag nopan${choice.active ? " active" : ""}${choice.pending ? " pending" : ""}`}
+      className={`pad-choice nodrag nopan${choice.active ? " active" : ""}`}
       role="radio"
       aria-checked={choice.active}
-      aria-busy={choice.pending || undefined}
       aria-label={`Make ${spec.id} the active pad`}
-      title={choice.active ? `${spec.id} is the active pad`
-        : choice.pending ? `Switching to ${spec.id} when the script allows it (e.g. next keyframe)…`
-          : `Switch to ${spec.id}`}
+      title={choice.active ? `${spec.id} is the active pad` : `Switch to ${spec.id}`}
       onPointerDown={stop}
       onMouseDown={stop}
       onClick={(event) => {
         event.stopPropagation();
-        if (!choice.active && !choice.pending) choice.onSelect();
+        if (!choice.active) choice.onSelect();
       }}
     />
   );

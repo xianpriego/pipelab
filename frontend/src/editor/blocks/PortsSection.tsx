@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { ComponentPort } from "../../api/dynamic";
+import type { ComponentPort } from "../../api/components";
 import type { ElementInfo, GraphEdge, GraphNode } from "../../api/types";
 import { Icon } from "../../components/Icon";
 import { exposePort, portsOfNode, removePort, suggestPortName } from "../../lib/components";

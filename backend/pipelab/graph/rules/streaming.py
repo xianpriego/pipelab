@@ -6,6 +6,7 @@ from pipelab.catalog.models import ElementInfo
 from pipelab.graph.models import Issue, Node
 from pipelab.graph.rules.base import RuleContext, issue
 from pipelab.graph.suggest import set_property_suggestion
+from pipelab.gst.values import parse_bool
 
 NETWORK_SINKS = {
     "udpsink",
@@ -104,7 +105,7 @@ def muxer_finalization(ctx: RuleContext) -> list[Issue]:
 
 
 def _async_enabled(node: Node) -> bool:
-    return str(node.properties.get("async", True)).lower() not in ("false", "0", "no")
+    return parse_bool(node.properties.get("async"), default=True)
 
 
 def loopback_async(ctx: RuleContext) -> list[Issue]:

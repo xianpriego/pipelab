@@ -13,6 +13,23 @@ from pipelab.gst import GObject, Gst
 
 JsonValue = str | int | float | bool | None
 
+TRUE_WORDS = frozenset({"true", "yes", "1", "on"})
+FALSE_WORDS = frozenset({"false", "no", "0", "off"})
+
+
+def parse_bool(value: object, default: bool = False) -> bool:
+    """A stored boolean property as GStreamer reads it ("off", "no", 0 are false)."""
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return default
+    text = str(value).strip().lower()
+    if text in TRUE_WORDS:
+        return True
+    if text in FALSE_WORDS:
+        return False
+    return default
+
 
 def flags_to_string(value: Any) -> str:
     nicks = list(getattr(value, "value_nicks", []) or [])
@@ -60,3 +77,21 @@ def to_launch_string(value: str | int | float | bool) -> str:
     if isinstance(value, float) and value.is_integer():
         return repr(value)
     return str(value)
+
+
+def parse_number(value: object, integer: bool) -> int | float | None:
+    """A stored numeric property (``"0x10"``, ``"08"`` and ``"1.5"`` included); None when it is not one."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int | float):
+        return value if not integer or float(value).is_integer() else None
+    text = str(value).strip()
+    try:
+        if not integer:
+            return float(text)
+        try:
+            return int(text, 0)
+        except ValueError:
+            return int(text)  # leading zeros
+    except ValueError:
+        return None

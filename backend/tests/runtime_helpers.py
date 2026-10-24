@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import json
-import struct
 import time
+
+from pipelab.runtime.protocol import decode_ws_binary
 
 
 def create_project(client, graph, name: str = "rt") -> str:
@@ -22,8 +23,7 @@ def events_until(ws, until, timeout: float = 15.0):
     while time.monotonic() < deadline:
         message = ws.receive()
         if message.get("bytes"):
-            size = struct.unpack(">I", message["bytes"][:4])[0]
-            previews.append(json.loads(message["bytes"][4 : 4 + size]))
+            previews.append(decode_ws_binary(message["bytes"])[0])
             continue
         event = json.loads(message["text"])
         events.append(event)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 import time
 from collections.abc import Iterator
@@ -12,7 +13,8 @@ from fastapi.testclient import TestClient
 
 from pipelab.config import Settings
 from pipelab.main import create_app
-from tests.conftest import CACHE_DIR
+
+CACHE_DIR = Path(os.environ.get("PIPELAB_TEST_CACHE", "/tmp/pipelab-test-cache"))
 
 
 @contextmanager

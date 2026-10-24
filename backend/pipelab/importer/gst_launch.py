@@ -4,15 +4,15 @@ from __future__ import annotations
 
 from pipelab.catalog.models import PropertyInfo, PropertyValue
 from pipelab.catalog.store import Catalog
-from pipelab.export.models import ImportResult
+from pipelab.graph.editing import default_name
 from pipelab.graph.layout import auto_layout
 from pipelab.graph.models import Edge, Graph, Node
+from pipelab.gst.values import FALSE_WORDS, TRUE_WORDS, parse_bool, parse_number
+from pipelab.importer.models import ImportResult
 from pipelab.importer.pads import PadResolver
 from pipelab.importer.parser import CapsItem, Description, ElementItem, RefItem, parse
 from pipelab.importer.tokenizer import tokenize
 
-_TRUE = {"true", "yes", "1", "on"}
-_FALSE = {"false", "no", "0", "off"}
 _INTEGER_TYPES = {"int", "uint", "int64", "uint64"}
 
 
@@ -20,25 +20,12 @@ def typed_value(info: PropertyInfo | None, raw: str) -> PropertyValue:
     """Convert a textual value to the JSON primitive matching the property type."""
     if info is None:
         return raw
-    if info.type == "boolean" and raw.lower() in _TRUE | _FALSE:
-        return raw.lower() in _TRUE
-    try:
-        if info.type in _INTEGER_TYPES:
-            return int(raw, 0) if raw.lower().startswith(("0x", "-0x")) else int(raw)
-        if info.type in ("float", "double"):
-            return float(raw)
-    except ValueError:
-        return raw
+    if info.type == "boolean" and raw.lower() in TRUE_WORDS | FALSE_WORDS:
+        return parse_bool(raw)
+    if info.type in _INTEGER_TYPES or info.type in ("float", "double"):
+        number = parse_number(raw, integer=info.type in _INTEGER_TYPES)
+        return raw if number is None else number
     return raw
-
-
-def default_name(factory: str, taken: set[str]) -> str:
-    """GStreamer's naming: ``queue0``, ``queue1``…, ``avdec_h264-0`` after a digit."""
-    separator = "-" if factory[-1:].isdigit() else ""
-    index = 0
-    while f"{factory}{separator}{index}" in taken:
-        index += 1
-    return f"{factory}{separator}{index}"
 
 
 class _Importer:

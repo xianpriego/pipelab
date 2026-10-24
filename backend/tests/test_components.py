@@ -3,19 +3,14 @@
 import pytest
 
 from pipelab.components.grouping import expand_instance, group_into_component
+from pipelab.components.models import Component, ComponentPort
 from pipelab.components.overlay import overlay_catalog
 from pipelab.components.validate import validate_component
 from pipelab.graph.analyzer import Analyzer
+from pipelab.graph.models import Graph, Node
 from pipelab.graph.validate import validate_graph
-from tests.api_client import api_client
-from tests.dynamic_fixtures import mixer_with_slot, source_component
+from tests.component_fixtures import source_component
 from tests.helpers import chain
-
-
-@pytest.fixture(scope="module")
-def client(catalog, tmp_path_factory):
-    with api_client(tmp_path_factory.mktemp("components")) as client:
-        yield client
 
 
 @pytest.fixture(scope="module")
@@ -49,12 +44,24 @@ def test_instances_validate_like_elements(library_analyzer):
     assert any("not in the library" in i.message for i in validate_graph(library_analyzer, missing))
 
 
-def test_slots_count_as_sources(library_analyzer):
-    issues = validate_graph(library_analyzer, mixer_with_slot())
-    assert [i.message for i in issues if i.severity == "error"] == []
-    broken = mixer_with_slot()
-    broken.slots[0].links[0].pad = "nope_%u"
-    assert any(i.rule == "slot" for i in validate_graph(library_analyzer, broken))
+def test_port_issues_only_hide_the_exposed_pad(library_analyzer):
+    """A port on n1.src must not hide the unlinked-pad error of a node whose id merely ends alike."""
+    graph = Graph(
+        nodes=[
+            Node(id="n1", factory="videotestsrc", name="a"),
+            Node(id="n11", factory="videotestsrc", name="b"),
+        ]
+    )
+    component = Component(
+        id="two",
+        name="Two",
+        graph=graph,
+        ports=[ComponentPort(name="src", direction="src", node_id="n1", pad="src")],
+    )
+    unlinked = [
+        i.node_ids for i in validate_component(library_analyzer, component) if i.rule == "unlinked-pad"
+    ]
+    assert unlinked == [["n11"]]
 
 
 def test_component_validation_accepts_exposed_pads(library_analyzer):
@@ -108,7 +115,7 @@ def test_from_selection_endpoint(client):
 
 def test_usage_lists_dependants_before_deleting(client):
     client.put("/api/components/test-source", json=source_component().model_dump(mode="json"))
-    graph = mixer_with_slot().model_dump()
+    graph = chain("component:test-source", "fakesink").model_dump()
     project = client.post("/api/projects", json={"name": "uses it", "graph": graph}).json()
     usage = client.get("/api/components/test-source/usage").json()
     assert usage["projects"] == [{"id": project["id"], "name": "uses it"}] and usage["components"] == []

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pipelab.catalog.models import ElementInfo
-from pipelab.graph.caps_flow import CAPS_FILTERS
+from pipelab.graph.caps_flow import CAPS_FILTERS, CONVERTERS
 from pipelab.graph.models import Edge, Issue, Node
 from pipelab.graph.rules.base import RuleContext, issue
 from pipelab.graph.suggest import insert_suggestion
@@ -13,16 +13,7 @@ DEFAULT_RAW_CAPS = {
     "audio/x-raw": "audio/x-raw,rate=48000,channels=2",
 }
 # Converters adapt formats but do not pin them; a capsfilter after them still counts.
-_CONVERTERS = {
-    "videoconvert",
-    "videoscale",
-    "videoconvertscale",
-    "audioconvert",
-    "audioresample",
-    "videorate",
-    "audiorate",
-    "queue",
-}
+_CONVERTERS = CONVERTERS | {"queue"}
 
 
 def _raw_media(element: ElementInfo) -> str | None:

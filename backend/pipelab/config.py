@@ -22,11 +22,15 @@ class Settings:
         return self.data_dir / "media"
 
     @property
+    def components_dir(self) -> Path:
+        return self.data_dir / "components"
+
+    @property
     def cache_dir(self) -> Path:
         return self.data_dir / "cache"
 
     def ensure_dirs(self) -> None:
-        for path in (self.projects_dir, self.media_dir, self.cache_dir):
+        for path in (self.projects_dir, self.components_dir, self.media_dir, self.cache_dir):
             path.mkdir(parents=True, exist_ok=True)
 
 

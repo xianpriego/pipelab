@@ -1,8 +1,8 @@
-"""API models for exporting and importing pipelines."""
+"""API models for exporting pipelines."""
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from pipelab.graph.models import Graph
 
@@ -26,12 +26,3 @@ class ExportResult(BaseModel):
     filename: str
     language: str
     content: str
-
-
-class ImportRequest(BaseModel):
-    description: str
-
-
-class ImportResult(BaseModel):
-    graph: Graph
-    warnings: list[str] = Field(default_factory=list)

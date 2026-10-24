@@ -12,13 +12,6 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@codemirror/autocomplete": "6.20.3",
-    "@codemirror/commands": "6.11.1",
-    "@codemirror/lang-python": "6.2.1",
-    "@codemirror/language": "6.12.4",
-    "@codemirror/state": "6.7.6",
-    "@codemirror/view": "6.43.13",
-    "@lezer/highlight": "1.2.5",
     "@xyflow/react": "12.12.0",
     "hls.js": "1.7.3",
     "react": "18.3.1",
@@ -31,7 +24,6 @@
     "@testing-library/dom": "10.4.2",
     "@testing-library/jest-dom": "6.10.0",
     "@testing-library/react": "16.3.3",
-    "@testing-library/user-event": "14.6.7",
     "@types/node": "22.20.5",
     "@types/react": "18.3.31",
     "@types/react-dom": "18.3.7",

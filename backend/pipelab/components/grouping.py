@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from pipelab.components.models import Component, ComponentPort
+from pipelab.components.models import COMPONENT_PREFIX, Component, ComponentPort
 from pipelab.graph.editing import new_edge_id, new_node_id, unique_name
 from pipelab.graph.models import Edge, Graph, Node, Position
 
@@ -36,17 +36,7 @@ def _inner_graph(graph: Graph, selected: set[str]) -> Graph:
     for node in nodes:
         node.position = Position(x=node.position.x - left, y=node.position.y - top)
     edges = [e.model_copy() for e in graph.edges if e.source in selected and e.target in selected]
-    inner_edges = {e.id for e in edges}
-
-    def inside(kind: str, target_id: str) -> bool:
-        return target_id in (selected if kind == "node" else inner_edges)
-
-    return Graph(
-        nodes=nodes,
-        edges=edges,
-        scripts=[s.model_copy(deep=True) for s in graph.scripts if inside(s.target.kind, s.target.id)],
-        probes=[p.model_copy(deep=True) for p in graph.probes if inside(p.target.kind, p.target.id)],
-    )
+    return Graph(nodes=nodes, edges=edges)
 
 
 def group_into_component(
@@ -63,7 +53,7 @@ def group_into_component(
     outer = graph.model_copy(deep=True)
     instance = Node(
         id=new_node_id(outer),
-        factory=f"component:{component_id}",
+        factory=f"{COMPONENT_PREFIX}{component_id}",
         name=unique_name(outer, component_id.replace("-", "_")),
         position=_centroid([n for n in graph.nodes if n.id in selected]),
     )
@@ -86,9 +76,6 @@ def group_into_component(
     inner_edges = {e.id for e in inner.edges}
     outer.nodes = [n for n in outer.nodes if n.id not in selected] + [instance]
     outer.edges = [e for e in outer.edges if e.id not in inner_edges]
-    moved_scripts, moved_probes = {s.id for s in inner.scripts}, {p.id for p in inner.probes}
-    outer.scripts = [s for s in outer.scripts if s.id not in moved_scripts]
-    outer.probes = [p for p in outer.probes if p.id not in moved_probes]
     component = Component(id=component_id, name=name or component_id, graph=inner, ports=ports)
     return component, outer
 
@@ -127,15 +114,6 @@ def expand_instance(graph: Graph, node_id: str, component: Component) -> Graph:
             edge.source, edge.source_pad = ids[ports[edge.source_pad].node_id], ports[edge.source_pad].pad
         if edge.target == node_id and edge.target_pad in ports:
             edge.target, edge.target_pad = ids[ports[edge.target_pad].node_id], ports[edge.target_pad].pad
-    for attached, collection in (
-        (component.graph.scripts, result.scripts),
-        (component.graph.probes, result.probes),
-    ):
-        for item in attached:
-            if item.target.id in ids:  # inner node and edge ids were remapped above
-                copy = item.model_copy(deep=True)
-                copy.id, copy.target.id = f"{item.id}-{instance.name}", ids[item.target.id]
-                collection.append(copy)
     return result
 
 

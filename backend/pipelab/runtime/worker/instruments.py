@@ -7,10 +7,9 @@ from typing import Any, Protocol
 
 from pipelab.gst import GLib, Gst
 from pipelab.runtime.worker.encoder import PreviewSettings
+from pipelab.runtime.worker.events import Emit
 from pipelab.runtime.worker.probes import LinkProbe
 from pipelab.runtime.worker.taps import LinkTap
-
-Emit = Callable[..., None]
 
 
 class _Instrument(Protocol):
@@ -50,7 +49,7 @@ class LinkInstruments:
             self._taps,
             edge_id,
             enabled,
-            lambda pad: LinkTap(edge_id, pad, self._preview, self._emit, self._emit),
+            lambda pad: LinkTap(edge_id, pad, self._preview, self._emit),
         )
 
     def set_probe(self, edge_id: str, enabled: bool) -> dict[str, Any]:

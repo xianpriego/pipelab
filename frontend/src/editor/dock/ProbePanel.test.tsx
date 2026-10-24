@@ -43,25 +43,3 @@ describe("probe panel", () => {
     expect(container.querySelectorAll("tr.probe-row")).toHaveLength(1);
   });
 });
-
-describe("probe panel script rows", () => {
-  beforeEach(() => {
-    useProbeStore.getState().reset();
-    useGraphStore.getState().load({
-      nodes: [node("sel", "input-selector")], edges: [],
-      scripts: [{ id: "s1", name: "Switch on keyframe", enabled: true, target: { kind: "node", id: "sel" }, code: "" }],
-    });
-  });
-
-  it("lists script messages under the element they run on", () => {
-    useProbeStore.getState().ingestScript({
-      type: "script", script_id: "s1", name: "Switch on keyframe", level: "info",
-      message: "switched to sink_1 at keyframe", time: 2,
-    });
-    const { container } = render(<ProbePanel />);
-    expect(container.querySelectorAll("tr.probe-row.log")).toHaveLength(1);
-    expect(screen.getByText("switched to sink_1 at keyframe")).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Item kind"), { target: { value: "buffer" } });
-    expect(container.querySelectorAll("tr.probe-row")).toHaveLength(0);
-  });
-});

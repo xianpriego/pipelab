@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import re
 import threading
 import uuid
@@ -10,6 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from pipelab.graph.models import Graph
+from pipelab.storage.files import atomic_write
 from pipelab.storage.models import Project, ProjectCreate, ProjectSummary, ProjectUpdate
 
 _ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
@@ -36,9 +36,7 @@ class ProjectStore:
 
     def _write(self, project: Project) -> Project:
         path = self._path(project.id)
-        temporary = path.with_suffix(".json.tmp")
-        temporary.write_text(project.model_dump_json(indent=2))
-        os.replace(temporary, path)
+        atomic_write(path, project.model_dump_json(indent=2))
         return project
 
     def list(self) -> list[ProjectSummary]:

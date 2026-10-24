@@ -3,7 +3,6 @@ import { Icon } from "../../components/Icon";
 import { useRuntimeStore } from "../../store/runtimeStore";
 import { useUiStore, type DockTab } from "../../store/uiStore";
 import { useValidationStore } from "../../store/validationStore";
-import { ApiPanel } from "../api/ApiPanel";
 import { BusPanel } from "./BusPanel";
 import { IssuesPanel } from "./IssuesPanel";
 import { LogPanel } from "./LogPanel";
@@ -13,7 +12,6 @@ import { ProbePanel } from "./ProbePanel";
 import { useProbeStore } from "../../store/probeStore";
 import { StatsPanel } from "./StatsPanel";
 import { PerfPanel } from "./PerfPanel";
-import { ADVANCED } from "../../lib/features";
 import { perfInsights, threadsInfo } from "../../lib/perf";
 import { useGraphStore } from "../../store/graphStore";
 
@@ -26,7 +24,6 @@ const TABS: [DockTab, string][] = [
   ["perf", "Performance"],
   ["probe", "Probe"],
   ["outputs", "Outputs"],
-  ...(ADVANCED ? [["api", "API"] as [DockTab, string]] : []),
 ];
 
 function useTabBadges(): Partial<Record<DockTab, { count: number; level: string }>> {
@@ -51,8 +48,7 @@ function useTabBadges(): Partial<Record<DockTab, { count: number; level: string 
 }
 
 export function Dock() {
-  const chosen = useUiStore((state) => state.dockTab);
-  const tab = chosen === "api" && !ADVANCED ? "issues" : chosen;
+  const tab = useUiStore((state) => state.dockTab);
   const open = useUiStore((state) => state.dockOpen);
   const setTab = useUiStore((state) => state.setDockTab);
   const toggle = useUiStore((state) => state.toggleDock);
@@ -97,7 +93,6 @@ export function Dock() {
           {tab === "stats" ? <StatsPanel /> : null}
           {tab === "perf" ? <PerfPanel /> : null}
           {tab === "probe" ? <ProbePanel /> : null}
-          {tab === "api" ? <ApiPanel /> : null}
         </div>
       ) : null}
     </section>

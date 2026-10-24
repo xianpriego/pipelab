@@ -1,7 +1,7 @@
 // Commands on components (macro blocks): group, create, enter/leave, expand.
 
 import { ApiError, api, errorMessage } from "../../api/client";
-import type { ComponentBundle, ComponentUsage } from "../../api/dynamic";
+import type { ComponentBundle, ComponentUsage } from "../../api/components";
 import type { Graph } from "../../api/types";
 import { componentIdOf, emptyComponent } from "../../lib/components";
 import { downloadText } from "../../lib/download";

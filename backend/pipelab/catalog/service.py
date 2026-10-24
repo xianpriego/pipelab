@@ -11,6 +11,7 @@ from typing import Literal
 from pipelab.catalog.build import build_catalog, registry_hash
 from pipelab.catalog.models import CatalogData
 from pipelab.catalog.store import Catalog
+from pipelab.storage.files import atomic_write
 
 log = logging.getLogger(__name__)
 
@@ -68,16 +69,27 @@ class CatalogService:
     def _progress(self, done: int, total: int) -> None:
         self.status.done, self.status.total = done, total
 
+    @staticmethod
+    def _cached(path: Path) -> CatalogData | None:
+        """The cached catalog; an unreadable cache is deleted so it gets rebuilt."""
+        if not path.exists():
+            return None
+        try:
+            return CatalogData.model_validate_json(path.read_text())
+        except ValueError:
+            log.warning("discarding unreadable catalog cache %s", path.name)
+            path.unlink(missing_ok=True)
+            return None
+
     def _load(self) -> None:
         try:
             path = self._cache_path()
-            if path.exists():
-                data = CatalogData.model_validate_json(path.read_text())
-            else:
+            data = self._cached(path)
+            if data is None:
                 log.info("building GStreamer element catalog (cache miss: %s)", path.name)
                 data = build_catalog(self._element_timeout, self._progress)
                 self._cache_dir.mkdir(parents=True, exist_ok=True)
-                path.write_text(data.model_dump_json())
+                atomic_write(path, data.model_dump_json())
             self._catalog = Catalog(data)
             self.status.state, self.status.count = "ready", len(self._catalog)
             log.info("catalog ready: %d elements", len(self._catalog))

@@ -7,8 +7,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from pipelab.catalog.models import PropertyValue
 from pipelab.graph.models import Graph
-from pipelab.graph.probes import Value
 
 COMPONENT_PREFIX = "component:"
 
@@ -31,7 +31,7 @@ class ParamTarget(BaseModel):
 class ComponentParam(BaseModel):
     name: str  # identifier used as the instance property name and in code
     description: str = ""
-    default: Value = None  # None: the inner property's own value
+    default: PropertyValue | None = None  # None: the inner property's own value
     targets: list[ParamTarget] = Field(default_factory=list)
 
 
@@ -55,9 +55,9 @@ def component_id(factory: str) -> str | None:
 
 
 def used_components(graph: Graph, library: dict[str, Component]) -> dict[str, Component]:
-    """Definitions a graph needs (instances, slots and nested components)."""
+    """Definitions a graph needs (its instances and the components nested in them)."""
     needed: dict[str, Component] = {}
-    pending = [component_id(node.factory) for node in graph.nodes] + [slot.component for slot in graph.slots]
+    pending = [component_id(node.factory) for node in graph.nodes]
     while pending:
         current = pending.pop()
         if current is None or current in needed or current not in library:
@@ -68,7 +68,5 @@ def used_components(graph: Graph, library: dict[str, Component]) -> dict[str, Co
 
 
 def references(graph: Graph, component: str) -> bool:
-    """Whether a graph uses a component directly (an instance node or a slot)."""
-    return any(component_id(node.factory) == component for node in graph.nodes) or any(
-        slot.component == component for slot in graph.slots
-    )
+    """Whether a graph has an instance of the component (not counting nested ones)."""
+    return any(component_id(node.factory) == component for node in graph.nodes)

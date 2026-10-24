@@ -2,7 +2,6 @@
 
 import pytest
 
-from tests.api_client import api_client
 from tests.helpers import chain
 from tests.runtime_helpers import create_project, events_until, import_project, is_playing
 
@@ -12,12 +11,6 @@ SELECTOR = (
     "input-selector name=sel ! fakesink videotestsrc is-live=true ! sel.sink_0 "
     "videotestsrc is-live=true pattern=ball ! sel.sink_1"
 )
-
-
-@pytest.fixture(scope="module")
-def client(catalog, tmp_path_factory):
-    with api_client(tmp_path_factory.mktemp("inspection")) as client:
-        yield client
 
 
 def _selector_events(events, node_id):

@@ -7,20 +7,8 @@ from pipelab.components.overlay import overlay_catalog
 from pipelab.components.starters import STARTER_COMPONENTS, StarterComponents
 from pipelab.components.validate import validate_component
 from pipelab.graph.analyzer import Analyzer
-from tests.api_client import api_client
 from tests.helpers import graph as graph_of
 from tests.runtime_helpers import create_project, events_until, is_stopped
-
-
-@pytest.fixture(scope="module")
-def data_dir(tmp_path_factory):
-    return tmp_path_factory.mktemp("starters")
-
-
-@pytest.fixture(scope="module")
-def client(catalog, data_dir):
-    with api_client(data_dir) as client:
-        yield client
 
 
 @pytest.mark.parametrize("starter_id", [s.id for s in STARTER_COMPONENTS])

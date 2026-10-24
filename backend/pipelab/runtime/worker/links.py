@@ -3,61 +3,22 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any
 
-from pipelab.catalog.store import template_regex
 from pipelab.graph.models import Edge, Graph, Node
 from pipelab.gst import Gst
 from pipelab.runtime.worker.diagnose import mismatch
+from pipelab.runtime.worker.events import Emit, bus_event
+from pipelab.runtime.worker.pads import get_pad, pad_matches
+from pipelab.runtime.worker.properties import apply_property
 
-Emit = Callable[[dict[str, Any]], None]
 OnLinked = Callable[[Edge, Gst.Pad], None]
 
 
-def _template(element: Gst.Element, pad_name: str) -> Gst.StaticPadTemplate | None:
-    templates = element.get_factory().get_static_pad_templates() if element.get_factory() else []
-    for template in templates:
-        if template.name_template == pad_name:
-            return template
-    for template in templates:
-        if template.presence != Gst.PadPresence.ALWAYS and template_regex(template.name_template).match(
-            pad_name
-        ):
-            return template
-    return None
-
-
-def get_pad(element: Gst.Element, pad_name: str) -> Gst.Pad | None:
-    """Existing pad, or a newly requested one for request templates."""
-    pad = element.get_static_pad(pad_name)
-    if pad is not None:
-        return pad
-    template = _template(element, pad_name)
-    if template is not None and template.presence == Gst.PadPresence.REQUEST:
-        return element.request_pad_simple(pad_name)
-    return None
-
-
-def apply_pad_properties(node: Node, pad: Gst.Pad, emit: Emit) -> None:
+def apply_pad_properties(node: Node, pad: Gst.Pad, emit: Emit, node_id: str) -> None:
+    """Pad properties of ``node`` (compositor sink_0 xpos…); problems become warnings."""
     for name, value in node.pad_properties.get(pad.get_name(), {}).items():
-        if pad.find_property(name) is None:
-            emit(
-                {
-                    "type": "bus",
-                    "kind": "warning",
-                    "source": node.name,
-                    "node_id": node.id,
-                    "text": f"Pad {pad.get_name()} has no property '{name}'",
-                }
-            )
-            continue
-        Gst.util_set_object_arg(pad, name, _launch_value(value))
-
-
-def _launch_value(value: Any) -> str:
-    if isinstance(value, bool):
-        return "true" if value else "false"
-    return str(value)
+        if error := apply_property(pad, name, value):
+            emit(bus_event("warning", f"Pad {pad.get_name()}: {error}", node.name, node_id))
 
 
 class Linker:
@@ -85,7 +46,7 @@ class Linker:
         target = self._elements[edge.target]
         pad = get_pad(target, edge.target_pad)
         if pad is not None:
-            apply_pad_properties(self._node(edge.target), pad, self._emit)
+            apply_pad_properties(self._node(edge.target), pad, self._emit, self._prefix + edge.target)
         return pad
 
     def link_all(self) -> list[str]:
@@ -97,7 +58,7 @@ class Linker:
             if src_pad is None:
                 self._pending.setdefault(edge.source, []).append(edge)
                 continue
-            apply_pad_properties(self._node(edge.source), src_pad, self._emit)
+            apply_pad_properties(self._node(edge.source), src_pad, self._emit, self._prefix + edge.source)
             error = self._link(edge, src_pad)
             if error:
                 errors.append(error)
@@ -120,21 +81,13 @@ class Linker:
         self._on_linked(edge, src_pad)
         return None
 
-    def _matches(self, edge: Edge, pad: Gst.Pad) -> bool:
-        if edge.source_pad == pad.get_name():
-            return True
-        template = pad.get_pad_template()
-        if template is not None and template.name_template == edge.source_pad:
-            return True
-        return bool(template_regex(edge.source_pad).match(pad.get_name()))
-
     def _on_pad_added(self, _element: Gst.Element, pad: Gst.Pad, node_id: str) -> None:
         if pad.get_direction() != Gst.PadDirection.SRC:
             return
         source = self._node(node_id)
         refusals = []
         for edge in list(self._pending.get(node_id, [])):
-            if not self._matches(edge, pad):
+            if not pad_matches(pad, edge.source_pad):
                 continue
             sink_pad = self._sink_pad(edge)
             if sink_pad is None or sink_pad.is_linked():
@@ -145,29 +98,14 @@ class Linker:
             if self._link(edge, pad) is None:
                 self._pending[node_id].remove(edge)
                 target = self._node(edge.target)
-                self._emit(
-                    {
-                        "type": "bus",
-                        "kind": "info",
-                        "source": source.name,
-                        "node_id": self._prefix + node_id,
-                        "text": f"Linked dynamic pad {pad.get_name()} → {target.name}.{edge.target_pad}",
-                    }
-                )
+                text = f"Linked dynamic pad {pad.get_name()} → {target.name}.{edge.target_pad}"
+                self._emit(bus_event("info", text, source.name, self._prefix + node_id))
                 return
         caps = pad.get_current_caps() or pad.query_caps(None)
         text = f"Dynamic pad {pad.get_name()} ({caps.to_string()[:120]}) matches no free link"
         if refusals:
             text = f"Dynamic pad {pad.get_name()} cannot be linked: {'; '.join(refusals)}"
-        self._emit(
-            {
-                "type": "bus",
-                "kind": "warning",
-                "source": source.name,
-                "node_id": self._prefix + node_id,
-                "text": text,
-            }
-        )
+        self._emit(bus_event("warning", text, source.name, self._prefix + node_id))
 
     def _refusal(self, edge: Edge, pad: Gst.Pad, sink_pad: Gst.Pad) -> str:
         """Why the caps of a new dynamic pad do not fit the pad it should link to."""
@@ -178,12 +116,5 @@ class Linker:
     def _on_no_more_pads(self, _element: Gst.Element, node_id: str) -> None:
         for edge in self._pending.get(node_id, []):
             target = self._node(edge.target)
-            self._emit(
-                {
-                    "type": "bus",
-                    "kind": "warning",
-                    "source": self._node(node_id).name,
-                    "node_id": self._prefix + node_id,
-                    "text": f"No pad appeared for the link to {target.name}.{edge.target_pad}",
-                }
-            )
+            text = f"No pad appeared for the link to {target.name}.{edge.target_pad}"
+            self._emit(bus_event("warning", text, self._node(node_id).name, self._prefix + node_id))

@@ -9,11 +9,11 @@ connect both sides, and ranks them so the idiomatic choice comes first.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from functools import lru_cache
 
 from pipelab.catalog.models import ElementInfo
-from pipelab.catalog.store import Catalog, parse_caps
+from pipelab.catalog.store import Catalog
 from pipelab.gst import Gst
+from pipelab.gst.caps import concrete_caps, has_special_memory, media_names
 
 TRANSFORMING = {"converter", "parser", "decoder", "encoder", "payloader", "depayloader"}
 _MEMORY_SUFFIXES = ("upload", "download", "convert", "scale", "postproc")
@@ -76,42 +76,6 @@ class _Candidate:
     src: Gst.Caps
     sink_types: frozenset[str]
     src_types: frozenset[str]
-
-
-@lru_cache(maxsize=4096)
-def concrete_caps(caps_string: str) -> Gst.Caps:
-    """Template caps without structures whose features are ANY."""
-    caps = parse_caps(caps_string)
-    if caps.is_any():
-        return caps
-    result = Gst.Caps.new_empty()
-    for index in range(caps.get_size()):
-        features = caps.get_features(index)
-        if features is not None and features.is_any():
-            continue
-        result.append_structure_full(caps.get_structure(index).copy(), features.copy() if features else None)
-    return result
-
-
-def media_names(caps: Gst.Caps) -> frozenset[str]:
-    if caps.is_any():
-        return frozenset({"ANY"})
-    return frozenset(caps.get_structure(i).get_name() for i in range(caps.get_size()))
-
-
-def has_special_memory(caps: Gst.Caps) -> bool:
-    if caps.is_any():
-        return False
-    for index in range(caps.get_size()):
-        features = caps.get_features(index)
-        if features is None or features.is_any():
-            continue
-        if any(
-            features.get_nth(i).startswith("memory:") and features.get_nth(i) != "memory:SystemMemory"
-            for i in range(features.get_size())
-        ):
-            return True
-    return False
 
 
 def _is_transforming(element: ElementInfo) -> bool:

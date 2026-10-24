@@ -16,12 +16,3 @@ export function scoped<T>(record: Record<string, T>, prefix: string): Record<str
   }
   return result;
 }
-
-/** Inner id of a runtime id in the scope, or null when it belongs elsewhere. */
-export function scopedId(id: string | null | undefined, prefix: string): string | null {
-  if (!id) return null;
-  if (!prefix) return id.includes("/") ? null : id;
-  if (!id.startsWith(prefix)) return null;
-  const inner = id.slice(prefix.length);
-  return inner && !inner.includes("/") ? inner : null;
-}

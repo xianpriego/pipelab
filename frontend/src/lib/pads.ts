@@ -22,10 +22,6 @@ export interface NodeHandles {
 const TOKENS: Record<string, string> = { "%u": "\\d+", "%d": "-?\\d+", "%s": ".+" };
 const regexCache = new Map<string, RegExp>();
 
-export function isTemplateName(name: string): boolean {
-  return /%[uds]/.test(name);
-}
-
 export function templateRegex(template: string): RegExp {
   let regex = regexCache.get(template);
   if (!regex) {

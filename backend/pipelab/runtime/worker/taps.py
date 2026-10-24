@@ -8,7 +8,8 @@ changes the negotiation or the timing of the user's pipeline.
 from __future__ import annotations
 
 from pipelab.gst import Gst
-from pipelab.runtime.worker.encoder import Emit, FrameEncoder, FrameHandler, FrameThinner, PreviewSettings
+from pipelab.runtime.worker.encoder import FrameEncoder, FrameThinner, PreviewSettings
+from pipelab.runtime.worker.events import Emit
 
 _DOWNLOADERS = {"memory:CUDAMemory": "cudadownload ! ", "memory:GLMemory": "gldownload ! "}
 # Encoded streams cannot lose buffers without corrupting the decode.
@@ -35,9 +36,7 @@ def _download(caps: Gst.Caps) -> str:
 
 
 class LinkTap:
-    def __init__(
-        self, edge_id: str, pad: Gst.Pad, settings: PreviewSettings, on_frame: FrameHandler, emit: Emit
-    ) -> None:
+    def __init__(self, edge_id: str, pad: Gst.Pad, settings: PreviewSettings, emit: Emit) -> None:
         caps = pad.get_current_caps()
         if caps is None or caps.is_empty():
             raise ValueError("the link has not negotiated caps yet")
@@ -49,7 +48,6 @@ class LinkTap:
             family,
             f"edge:{edge_id}",
             settings,
-            on_frame,
             emit,
             prefix=_download(caps) if raw else "decodebin ! ",
             max_buffers=2 if raw else _ENCODED_QUEUE,
@@ -58,14 +56,21 @@ class LinkTap:
         self._encoder.source.set_property("caps", caps)
         thinner = FrameThinner(settings.max_fps) if raw and family == "video" else None
 
-        def copy(_pad: Gst.Pad, info: Gst.PadProbeInfo) -> Gst.PadProbeReturn:
-            buffer = info.get_buffer()
+        def push(buffer: Gst.Buffer) -> None:
             if thinner is None or thinner.keep(buffer.pts):
                 self._encoder.push_buffer(buffer)
+
+        def copy(_pad: Gst.Pad, info: Gst.PadProbeInfo) -> Gst.PadProbeReturn:
+            if info.type & Gst.PadProbeType.BUFFER:
+                push(info.get_buffer())
+            else:  # payloaders and some parsers push buffer lists
+                buffers = info.get_buffer_list()
+                for index in range(buffers.length()):
+                    push(buffers.get(index))
             return Gst.PadProbeReturn.OK
 
         self._pad = pad
-        self._probe = pad.add_probe(Gst.PadProbeType.BUFFER, copy)
+        self._probe = pad.add_probe(Gst.PadProbeType.BUFFER | Gst.PadProbeType.BUFFER_LIST, copy)
 
     def close(self) -> None:
         self._pad.remove_probe(self._probe)

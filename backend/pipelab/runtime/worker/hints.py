@@ -35,9 +35,9 @@ _DEBUG_HINTS = [
 
 _RESOURCE_HINTS = {
     Gst.ResourceError.NOT_FOUND: "File or device not found: check location/uri. Relative paths are "
-    "resolved inside /data/media (the Outputs tab).",
+    "resolved inside the media folder (the Outputs tab).",
     Gst.ResourceError.OPEN_READ: "Cannot open for reading: check the path/uri and permissions.",
-    Gst.ResourceError.OPEN_WRITE: "Cannot open for writing: does the directory exist inside /data/media?",
+    Gst.ResourceError.OPEN_WRITE: "Cannot open for writing: does the folder exist inside the media folder?",
     Gst.ResourceError.BUSY: "The device is busy: another process or pipeline is using it.",
     Gst.ResourceError.SETTINGS: "The element rejected its settings: review its properties.",
 }

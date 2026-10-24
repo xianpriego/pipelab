@@ -10,14 +10,12 @@ interface PropertyListProps {
   onChange: (prop: PropertyInfo, value: PropertyValue | undefined) => void;
   onTryLive: (prop: PropertyInfo) => void;
   searchable?: boolean;
-  /** Values a script deferred, by property name. */
-  pending?: Record<string, PropertyValue>;
   /** Extra controls in each row's head (e.g. "expose as parameter" inside a component). */
   extra?: (prop: PropertyInfo) => ReactNode;
 }
 
 export function PropertyList({
-  properties, values, running, pads, onChange, onTryLive, searchable = true, pending, extra,
+  properties, values, running, pads, onChange, onTryLive, searchable = true, extra,
 }: PropertyListProps) {
   const [query, setQuery] = useState("");
   const [showReadOnly, setShowReadOnly] = useState(false);
@@ -53,7 +51,6 @@ export function PropertyList({
           value={values[prop.name]}
           running={running}
           pads={pads}
-          pending={pending?.[prop.name]}
           onChange={(value) => onChange(prop, value)}
           onTryLive={() => onTryLive(prop)}
           extra={extra?.(prop)}

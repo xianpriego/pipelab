@@ -1,13 +1,8 @@
 // Graph being edited, with undo/redo history and a clipboard.
 
 import { create } from "zustand";
-import type { ApiFunction, ProbeRuleSet, Slot } from "../api/dynamic";
-import type { Graph, GraphEdge, GraphNode, Position, ProbeScript, PropertyValue } from "../api/types";
-import * as fns from "../lib/apiFunctions";
+import type { Graph, GraphEdge, GraphNode, Position, PropertyValue } from "../api/types";
 import * as ops from "../lib/graphOps";
-import * as probes from "../lib/probeRules";
-import * as scripts from "../lib/scripts";
-import * as slots from "../lib/slots";
 
 const HISTORY_LIMIT = 100;
 const PASTE_OFFSET: Position = { x: 40, y: 40 };
@@ -42,18 +37,6 @@ interface GraphStore {
   moveNodes: (positions: Record<string, Position>) => void;
   addEdge: (edge: GraphEdge) => void;
   removeElements: (nodeIds: string[], edgeIds: string[]) => void;
-  addScript: (script: ProbeScript) => void;
-  updateScript: (id: string, patch: Partial<Omit<ProbeScript, "id">>) => void;
-  removeScript: (id: string) => void;
-  addProbe: (probe: ProbeRuleSet) => void;
-  updateProbe: (id: string, patch: Partial<Omit<ProbeRuleSet, "id">>) => void;
-  removeProbe: (id: string) => void;
-  addSlot: (slot: Slot) => void;
-  updateSlot: (id: string, patch: Partial<Omit<Slot, "id">>) => void;
-  removeSlot: (id: string) => void;
-  addFunction: (fn: ApiFunction) => void;
-  updateFunction: (name: string, fn: ApiFunction) => void;
-  removeFunction: (name: string) => void;
   undo: () => void;
   redo: () => void;
   copy: (nodeIds: string[]) => void;
@@ -114,18 +97,6 @@ export const useGraphStore = create<GraphStore>((set, get) => {
       if (nodeIds.length === 0 && edgeIds.length === 0) return;
       commit(ops.removeElements(get().graph, nodeIds, edgeIds));
     },
-    addScript: (script) => commit(scripts.addScript(get().graph, script)),
-    updateScript: (id, patch) => commit(scripts.updateScript(get().graph, id, patch)),
-    removeScript: (id) => commit(scripts.removeScript(get().graph, id)),
-    addProbe: (probe) => commit(probes.addProbe(get().graph, probe)),
-    updateProbe: (id, patch) => commit(probes.updateProbe(get().graph, id, patch)),
-    removeProbe: (id) => commit(probes.removeProbe(get().graph, id)),
-    addSlot: (slot) => commit(slots.addSlot(get().graph, slot)),
-    updateSlot: (id, patch) => commit(slots.updateSlot(get().graph, id, patch)),
-    removeSlot: (id) => commit(slots.removeSlot(get().graph, id)),
-    addFunction: (fn) => commit(fns.addFunction(get().graph, fn)),
-    updateFunction: (name, fn) => commit(fns.updateFunction(get().graph, name, fn)),
-    removeFunction: (name) => commit(fns.removeFunction(get().graph, name)),
     undo: () =>
       set((state) => {
         const previous = state.past[state.past.length - 1];

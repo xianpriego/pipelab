@@ -1,30 +1,14 @@
 // Link probes ("pinchar cables"): batches of buffers/events seen on a link.
 
-import type { ProbeBuffer, ProbeEvent, ProbeItem, ProbeLogEvent, ScriptEvent, ScriptLevel } from "../api/events";
+import type { ProbeBuffer, ProbeEvent, ProbeItem } from "../api/events";
 
 export const PROBE_ROW_LIMIT = 2000;
 
-/** A message logged by a probe script. */
-export interface ProbeLogItem {
-  kind: "log";
-  time: number | null;
-  level: ScriptLevel;
-  message: string;
-  scriptName: string;
-  fields?: Record<string, unknown> | null;
-}
-
-export type ProbeRowItem = ProbeItem | ProbeLogItem;
-
 export interface ProbeRow {
   seq: number;
-  /** Probed link, or "" for script messages. */
+  /** Probed link. */
   edgeId: string;
-  /** Script that logged the row. */
-  scriptId?: string;
-  /** Probe rule set that logged the row ("<instance>/<probe id>" inside components). */
-  probeId?: string;
-  item: ProbeRowItem;
+  item: ProbeItem;
 }
 
 export interface ProbeData {
@@ -54,27 +38,6 @@ export function ingestProbe(data: ProbeData, event: ProbeEvent, paused: boolean,
   return appendRows({ ...data, dropped }, event.items.map((item) => ({ edgeId: event.edge_id, item })), limit);
 }
 
-/** Script messages share the probe table (same pause and row cap). */
-export function ingestScript(data: ProbeData, event: ScriptEvent, paused: boolean, limit = PROBE_ROW_LIMIT): ProbeData {
-  if (paused) return { ...data, skipped: data.skipped + 1 };
-  const item: ProbeLogItem = {
-    kind: "log", time: event.time ?? null, level: event.level, message: event.message,
-    scriptName: event.name, fields: event.fields,
-  };
-  return appendRows(data, [{ edgeId: "", scriptId: event.script_id, item }], limit);
-}
-
-/** ``log`` actions of probe rule sets share the table too. */
-export function ingestProbeLog(
-  data: ProbeData, event: ProbeLogEvent, probeName: string, paused: boolean, limit = PROBE_ROW_LIMIT,
-): ProbeData {
-  if (paused) return { ...data, skipped: data.skipped + 1 };
-  const item: ProbeLogItem = {
-    kind: "log", time: event.time ?? null, level: event.level, message: event.message, scriptName: probeName,
-  };
-  return appendRows(data, [{ edgeId: "", probeId: event.probe, item }], limit);
-}
-
 export function isKeyframe(buffer: ProbeBuffer): boolean {
   return !buffer.flags.includes("delta-unit");
 }
@@ -98,8 +61,7 @@ function averageGap(times: number[]): number | null {
 export function summarize(rows: ProbeRow[], edgeId: string): ProbeSummary {
   const items = rows
     .filter((row) => row.edgeId === edgeId)
-    .map((row) => row.item)
-    .filter((item): item is ProbeItem => item.kind !== "log");
+    .map((row) => row.item);
   const buffers = items.filter((item): item is ProbeBuffer => item.kind === "buffer");
   const recent = buffers.slice(-WINDOW);
   const gap = averageGap(recent.map((buffer) => buffer.time));

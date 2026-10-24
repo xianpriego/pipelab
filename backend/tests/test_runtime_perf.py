@@ -2,16 +2,9 @@
 
 import pytest
 
-from tests.api_client import api_client
 from tests.runtime_helpers import events_until, import_project
 
 pytestmark = pytest.mark.runtime
-
-
-@pytest.fixture(scope="module")
-def client(catalog, tmp_path_factory):
-    with api_client(tmp_path_factory.mktemp("perf")) as client:
-        yield client
 
 
 def _node(graph, name):

@@ -42,21 +42,3 @@ class LinkToggle(BaseModel):
 
     edge_id: str
     enabled: bool = True
-
-
-class TriggerRequest(BaseModel):
-    """Calls ``on_trigger(ctx, value)`` of a running script."""
-
-    script_id: str
-    value: PropertyValue | None = None
-
-
-class CallRequest(BaseModel):
-    function: str
-    args: dict[str, PropertyValue | None] = {}
-
-
-class SignalRequest(BaseModel):
-    probe: str
-    name: str
-    value: PropertyValue | None = None

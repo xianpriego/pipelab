@@ -107,14 +107,3 @@
 .minimap { background: var(--bg-panel) !important; border: 1px solid var(--border); border-radius: var(--radius-sm); }
 .react-flow__minimap-mask { fill: var(--minimap-mask); }
 .react-flow__selection { background: var(--primary-soft); border-color: var(--primary); }
-
-/* Probe scripts: "ƒ" markers and deferred selector switches. */
-.script-badge {
-  display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; border-radius: 4px;
-  font: italic 700 11px/1 var(--mono); color: var(--gst-blue); background: var(--primary-soft); flex: none;
-}
-.script-badge.disabled { opacity: 0.45; filter: grayscale(1); }
-.edge-label .script-badge { width: 13px; height: 13px; font-size: 10px; }
-.edge-label.script-only { padding: 1px; }
-.pad-choice.pending { border-color: var(--warning); background: var(--warning-soft); animation: pulse 1s ease-in-out infinite; cursor: progress; }
-@media (prefers-reduced-motion: reduce) { .pad-choice.pending { animation: none; } }

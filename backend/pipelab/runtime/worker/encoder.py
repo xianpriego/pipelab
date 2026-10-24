@@ -8,15 +8,12 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
 
 from pipelab.gst import Gst
+from pipelab.runtime.worker.events import Emit, bus_event
 
 AUDIO_RATE = 48000
 AUDIO_CHANNELS = 2
-
-FrameHandler = Callable[[dict, bytes], None]
-Emit = Callable[[dict[str, Any]], None]
 
 
 @dataclass(frozen=True)
@@ -57,8 +54,8 @@ def _buffer_bytes(buffer: Gst.Buffer) -> bytes:
         buffer.unmap(info)
 
 
-def sample_handler(
-    preview_id: str, kind: str, on_frame: FrameHandler, extra: dict | None = None
+def _sample_handler(
+    preview_id: str, kind: str, emit: Emit, extra: dict | None = None
 ) -> Callable[[Gst.Element], Gst.FlowReturn]:
     """``new-sample`` callback that forwards appsink samples as preview frames."""
 
@@ -72,7 +69,7 @@ def sample_handler(
             )
         else:
             header.update(rate=AUDIO_RATE, channels=AUDIO_CHANNELS, format="F32LE")
-        on_frame(header, _buffer_bytes(sample.get_buffer()))
+        emit(header, _buffer_bytes(sample.get_buffer()))
         return Gst.FlowReturn.OK
 
     return on_sample
@@ -102,7 +99,6 @@ class FrameEncoder:
         kind: str,
         preview_id: str,
         settings: PreviewSettings,
-        on_frame: FrameHandler,
         emit: Emit,
         prefix: str = "",
         max_buffers: int = 2,
@@ -111,24 +107,17 @@ class FrameEncoder:
         self.pipeline = Gst.parse_launch(_description(kind, settings, prefix, max_buffers))
         self.source = self.pipeline.get_by_name("encoder_src")
         sink = self.pipeline.get_by_name("encoder_sink")
-        sink.connect("new-sample", sample_handler(preview_id, kind, on_frame, extra))
+        sink.connect("new-sample", _sample_handler(preview_id, kind, emit, extra))
         self._emit = emit
         self._preview_id = preview_id
-        bus = self.pipeline.get_bus()
-        bus.add_signal_watch()
-        bus.connect("message::error", self._on_error)
+        self._bus = self.pipeline.get_bus()
+        self._bus.add_signal_watch()
+        self._bus.connect("message::error", self._on_error)
         self.pipeline.set_state(Gst.State.PLAYING)
 
     def _on_error(self, _bus: Gst.Bus, message: Gst.Message) -> None:
         error, _debug = message.parse_error()
-        self._emit(
-            {
-                "type": "bus",
-                "kind": "warning",
-                "source": "preview",
-                "text": f"Preview {self._preview_id} failed: {error.message}",
-            }
-        )
+        self._emit(bus_event("warning", f"Preview {self._preview_id} failed: {error.message}", "preview"))
 
     def push_sample(self, sample: Gst.Sample) -> None:
         self.source.emit("push-sample", sample)
@@ -138,3 +127,4 @@ class FrameEncoder:
 
     def close(self) -> None:
         self.pipeline.set_state(Gst.State.NULL)
+        self._bus.remove_signal_watch()

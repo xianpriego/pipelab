@@ -1,9 +1,10 @@
-// Builds the kitchen-sink pipeline without playing it: every construction path runs.
+// Builds the exported pipeline without playing it and reports what the builders created.
 fn main() -> Result<()> {
-    let pipeline = KitchenPipeline::new(Config::default())?;
-    let children = pipeline.pipeline().children().len();
-    println!("BUILT {children} {}", pipeline.list_extras().len());
-    let pattern = pipeline.element("cam/inner/src")?.property_value("pattern");
-    println!("NESTED {}", pattern.serialize()?);
+    let pipeline = ComponentsPipeline::new()?;
+    println!("BUILT {}", pipeline.pipeline().children().len());
+    let source = pipeline.element("cam/inner/src")?;
+    println!("NESTED {}", source.property_value("pattern").serialize()?);
+    println!("BUFFERS {}", source.property::<i32>("num-buffers"));
+    println!("PORTS {}", pipeline.element("cam")?.static_pad("video").is_some());
     Ok(())
 }

@@ -1,7 +1,7 @@
-import type { ComponentParam } from "../../api/dynamic";
+import type { ComponentParam } from "../../api/components";
 import { Icon } from "../../components/Icon";
 import { removeParam, removeParamTarget, removePort, renamePort, updateParam } from "../../lib/components";
-import { formatValue, parseValue } from "../../lib/valueRefs";
+import { formatValue, parseValue } from "../../lib/paramValues";
 import { useComponentStore, useCurrentSession } from "../../store/componentStore";
 import { useGraphStore } from "../../store/graphStore";
 import { deleteCurrentComponent, exportComponentFile } from "./componentActions";

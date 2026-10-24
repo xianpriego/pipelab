@@ -2,8 +2,6 @@
 
 import type { Graph, GraphEdge, GraphNode, Position, PropertyValue } from "../api/types";
 import { newId, uniqueName } from "./ids";
-import { liveProbes, probesOf, retargetProbes } from "./probeRules";
-import { liveScripts, retargetScripts, scriptsOf } from "./scripts";
 
 export const EMPTY_GRAPH: Graph = { nodes: [], edges: [] };
 
@@ -80,31 +78,24 @@ export function addEdge(graph: Graph, edge: GraphEdge): Graph {
   return { ...graph, edges: [...graph.edges.filter((e) => e.id !== edge.id), edge] };
 }
 
-/**
- * Removes nodes and edges, with their links and the scripts/probes attached to any of them.
- * Slots linked to removed elements are kept: validation reports them.
- */
+/** Removes nodes and edges, with the links of the removed nodes. */
 export function removeElements(graph: Graph, nodeIds: string[], edgeIds: string[]): Graph {
   const nodes = new Set(nodeIds);
   const edges = new Set(edgeIds);
-  const remaining: Graph = {
+  return {
     ...graph,
     nodes: graph.nodes.filter((node) => !nodes.has(node.id)),
     edges: graph.edges.filter((edge) => !edges.has(edge.id) && !nodes.has(edge.source) && !nodes.has(edge.target)),
   };
-  if (graph.scripts) remaining.scripts = liveScripts(remaining, graph.scripts);
-  if (graph.probes) remaining.probes = liveProbes(remaining, graph.probes);
-  return remaining;
 }
 
-/** Sub-graph made of the given nodes, the edges between them and their scripts and probes. */
+/** Sub-graph made of the given nodes and the edges between them. */
 export function extractSubgraph(graph: Graph, nodeIds: string[]): Graph {
   const ids = new Set(nodeIds);
-  const sub = {
+  return {
     nodes: graph.nodes.filter((node) => ids.has(node.id)),
     edges: graph.edges.filter((edge) => ids.has(edge.source) && ids.has(edge.target)),
   };
-  return { ...sub, scripts: liveScripts(sub, scriptsOf(graph)), probes: liveProbes(sub, probesOf(graph)) };
 }
 
 /** Paste a copied sub-graph with fresh ids and names, shifted by ``offset``. */
@@ -123,22 +114,13 @@ export function pasteSubgraph(graph: Graph, clip: Graph, offset: Position): { gr
       position: { x: node.position.x + offset.x, y: node.position.y + offset.y },
     };
   });
-  const edgeMap = new Map<string, string>();
-  const edges = clip.edges.map((edge) => {
-    const id = newId("e");
-    edgeMap.set(edge.id, id);
-    return {
-      ...edge,
-      id,
-      source: idMap.get(edge.source) ?? edge.source,
-      target: idMap.get(edge.target) ?? edge.target,
-    };
-  });
-  const scripts = retargetScripts(scriptsOf(clip), idMap, edgeMap);
-  const probes = retargetProbes(probesOf(clip), idMap, edgeMap);
+  const edges = clip.edges.map((edge) => ({
+    ...edge,
+    id: newId("e"),
+    source: idMap.get(edge.source) ?? edge.source,
+    target: idMap.get(edge.target) ?? edge.target,
+  }));
   const pasted: Graph = { ...graph, nodes: [...graph.nodes, ...nodes], edges: [...graph.edges, ...edges] };
-  if (graph.scripts || scripts.length) pasted.scripts = [...scriptsOf(graph), ...scripts];
-  if (graph.probes || probes.length) pasted.probes = [...probesOf(graph), ...probes];
   return { graph: pasted, nodeIds: nodes.map((node) => node.id) };
 }
 

@@ -6,7 +6,6 @@ from pipelab.catalog.store import Catalog
 from pipelab.export.c_template import EPILOGUE, PRELUDE
 from pipelab.export.common import ElementSpec, PipelineSpec, PropertySpec, build_spec, slug
 from pipelab.export.gst_launch import render_description
-from pipelab.export.script_notes import comment_block, script_notes
 from pipelab.graph.models import Graph
 
 C_KEYWORDS = frozenset(
@@ -162,5 +161,4 @@ def render(graph: Graph, catalog: Catalog, name: str) -> str:
         description=description,
         pipeline_name=c_string(name),
     )
-    notes = comment_block(script_notes(graph, "c"), "c")
-    return prelude + "\n".join(_build_body(spec)) + "\n" + EPILOGUE + notes
+    return prelude + "\n".join(_build_body(spec)) + "\n" + EPILOGUE

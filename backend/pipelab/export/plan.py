@@ -1,9 +1,8 @@
-"""Language-neutral plan of a dynamic program: components, slots, functions, probes.
+"""Language-neutral plan of a pipeline library: the graph and the components it uses.
 
 ``build_program`` resolves everything the Rust and Python generators need so
 they only decide syntax: identifiers, typed parameters, how every component
-port maps to an inner pad, which graph links wait for *sometimes* pads, and
-the probe rule sets of each scope (top level or component).
+port maps to an inner pad and which links wait for *sometimes* pads.
 """
 
 from __future__ import annotations
@@ -15,9 +14,7 @@ from typing import Literal
 from pipelab.catalog.store import Catalog
 from pipelab.components.models import Component, ComponentParam, component_id
 from pipelab.export.common import PipelineSpec, build_spec, camel_case, identifier
-from pipelab.graph.dynamic import ApiFunction, Slot
 from pipelab.graph.models import Graph, Node
-from pipelab.graph.probes import ProbeRuleSet
 
 ParamKind = Literal["string", "int", "float", "bool"]
 _KINDS: dict[str, ParamKind] = {
@@ -71,7 +68,6 @@ class ScopePlan:
 
     spec: PipelineSpec
     instances: dict[str, InstancePlan]  # node id → instance
-    probes: list[ProbeRuleSet]
     dynamic_edges: set[str]  # edges whose source is a sometimes pad or port
 
     def is_instance(self, node_id: str) -> bool:
@@ -92,33 +88,12 @@ class ComponentPlan:
         return [p for p in self.ports if p.direction == "sink"]
 
 
-@dataclass(frozen=True)
-class SlotPlan:
-    slot: Slot
-    component: ComponentPlan
-    ident: str  # identifier(slot.name)
-    item: str  # identifier(slot.item)
-    has_sink_links: bool
-
-
-@dataclass(frozen=True)
-class FunctionPlan:
-    function: ApiFunction
-    ident: str
-
-
 @dataclass
 class ProgramPlan:
     name: str
     type_name: str
     root: ScopePlan
     components: list[ComponentPlan]  # dependencies first
-    slots: list[SlotPlan]
-    functions: list[FunctionPlan]
-
-    @property
-    def message_forward(self) -> bool:
-        return any(slot.has_sink_links for slot in self.slots)
 
 
 class _Planner:
@@ -167,8 +142,7 @@ class _Planner:
                 )
                 if port is not None and port.presence == "sometimes":
                     dynamic.add(edge.id)
-        probes = [p for p in graph.probes if p.enabled]
-        return ScopePlan(spec, instances, probes, dynamic)
+        return ScopePlan(spec, instances, dynamic)
 
     def _param(self, definition: Component, param: ComponentParam) -> ParamPlan:
         nodes = {n.id: n for n in definition.graph.nodes}
@@ -233,11 +207,6 @@ def _kind_of(value: object) -> ParamKind:
     return "string"
 
 
-def uses_dynamic_features(graph: Graph) -> bool:
-    has_instances = any(component_id(node.factory) for node in graph.nodes)
-    return bool(has_instances or graph.slots or graph.functions or [p for p in graph.probes if p.enabled])
-
-
 def build_program(
     graph: Graph,
     catalog: Catalog,
@@ -247,15 +216,4 @@ def build_program(
 ) -> ProgramPlan:
     planner = _Planner(catalog, components, reserved)
     root = planner.scope(graph)
-    slots = []
-    for slot in graph.slots:
-        component = planner.component(slot.component)
-        ports = {p.name: p for p in component.ports}
-        has_sink = any(ports.get(link.port) and ports[link.port].direction == "sink" for link in slot.links)
-        slots.append(
-            SlotPlan(
-                slot, component, identifier(slot.name, reserved), identifier(slot.item, reserved), has_sink
-            )
-        )
-    functions = [FunctionPlan(f, identifier(f.name, reserved)) for f in graph.functions]
-    return ProgramPlan(name, camel_case(name), root, planner.order, slots, functions)
+    return ProgramPlan(name, camel_case(name), root, planner.order)

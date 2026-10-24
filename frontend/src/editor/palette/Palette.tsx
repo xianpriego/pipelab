@@ -11,7 +11,6 @@ import { useAddElement } from "./useAddElement";
 import { ComponentNameDialog } from "../blocks/ComponentNameDialog";
 import { createComponent, importComponentFile } from "../blocks/componentActions";
 import { StartersDialog } from "../blocks/StartersDialog";
-import { ADVANCED } from "../../lib/features";
 
 export function Palette() {
   const elements = useCatalogStore((state) => state.elements);
@@ -114,9 +113,7 @@ export function Palette() {
         ))}
         {filtering && results.length === 0 ? <div className="empty-state">No element matches.</div> : null}
       </div>
-      <div className="palette-hint faint">
-        Drag onto the canvas or double-click to add{ADVANCED ? " · Alt-drag a component for a slot" : ""}
-      </div>
+      <div className="palette-hint faint">Drag onto the canvas or double-click to add</div>
       {creating ? (
         <ComponentNameDialog title="New component" confirmLabel="Create and open"
           hint="An empty component opens on the canvas: add elements, expose ports and parameters, then save it."

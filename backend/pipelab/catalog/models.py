@@ -56,13 +56,6 @@ class PropertyInfo(BaseModel):
     mutable: Mutability = "unknown"
     controllable: bool = False
 
-    @property
-    def live_editable(self) -> bool:
-        """Whether the property may be changed while the pipeline is PLAYING."""
-        if not self.writable or self.construct_only:
-            return False
-        return self.mutable == "playing" or self.controllable or self.type == "pad"
-
 
 class PadSummary(BaseModel):
     name: str
@@ -74,6 +67,9 @@ class PadSummary(BaseModel):
 class PadTemplateInfo(PadSummary):
     caps: str = "ANY"
     properties: list[PropertyInfo] = Field(default_factory=list)
+
+    def property(self, name: str) -> PropertyInfo | None:
+        return next((p for p in self.properties if p.name == name), None)
 
 
 class ElementSummary(BaseModel):

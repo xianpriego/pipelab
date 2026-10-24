@@ -75,7 +75,3 @@ export function sliderStep(prop: PropertyInfo, range: [number, number]): number 
   const span = range[1] - range[0];
   return span <= 2 ? 0.01 : span <= 20 ? 0.1 : 1;
 }
-
-export function isEditableType(prop: PropertyInfo): boolean {
-  return prop.writable && prop.type !== "object" && prop.type !== "other";
-}

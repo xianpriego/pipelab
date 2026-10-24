@@ -17,8 +17,6 @@ interface PropertyFieldProps {
   pads: string[];
   onChange: (value: PropertyValue | undefined) => void;
   onTryLive?: () => void;
-  /** Requested value a script has not applied yet (e.g. waiting for a keyframe). */
-  pending?: PropertyValue;
   extra?: ReactNode;
 }
 
@@ -54,7 +52,7 @@ function LiveBadge({ prop, running, onTryLive }: Pick<PropertyFieldProps, "prop"
   return <span className="badge warning" title={`Changeable up to ${prop.mutable.toUpperCase()} state`}>restart</span>;
 }
 
-export function PropertyField({ prop, value, running, pads, onChange, onTryLive, pending, extra }: PropertyFieldProps) {
+export function PropertyField({ prop, value, running, pads, onChange, onTryLive, extra }: PropertyFieldProps) {
   const modified = value !== undefined;
   const editable = prop.writable && prop.type !== "object" && prop.type !== "other";
   return (
@@ -77,11 +75,6 @@ export function PropertyField({ prop, value, running, pads, onChange, onTryLive,
       ) : (
         <div className="prop-readonly mono">{value ?? String(prop.default ?? "—")}</div>
       )}
-      {pending !== undefined ? (
-        <div className="prop-pending" role="status" title="A probe script deferred this change">
-          <span className="spinner" /> pending… {String(pending)} applies when the script allows it
-        </div>
-      ) : null}
       {prop.blurb ? <div className="prop-blurb">{prop.blurb}</div> : null}
     </div>
   );

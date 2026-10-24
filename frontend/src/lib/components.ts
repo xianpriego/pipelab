@@ -1,7 +1,7 @@
 // Components (macro blocks): pure helpers on definitions, ports and parameters.
 
-import type { ComponentDef, ComponentParam, ComponentPort, ParamTarget, Value } from "../api/dynamic";
-import type { Graph, Issue } from "../api/types";
+import type { ComponentDef, ComponentParam, ComponentPort, ParamTarget, Value } from "../api/components";
+import type { Graph } from "../api/types";
 
 export const COMPONENT_PREFIX = "component:";
 
@@ -95,16 +95,4 @@ export function pruneDefinition(def: ComponentDef, graph: Graph): Pick<Component
     ports: def.ports.filter((p) => nodes.has(p.node_id)),
     parameters: def.parameters.map((p) => ({ ...p, targets: p.targets.filter((t) => nodes.has(t.node_id)) })),
   };
-}
-
-/**
- * Validation issues of ``rule`` about an entity: the issue id mentions its id, or the message
- * names it (e.g. "Slot 'inputs': …").
- */
-export function issuesAbout(issues: Issue[], rule: string, id: string, name?: string): Issue[] {
-  return issues.filter((issue) => {
-    if (issue.rule !== rule) return false;
-    if (issue.id.split(":").includes(id)) return true;
-    return name !== undefined && issue.message.includes(`'${name}'`);
-  });
 }

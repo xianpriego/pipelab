@@ -5,9 +5,10 @@ from __future__ import annotations
 import re
 
 from pipelab.catalog.models import PadTemplateInfo
-from pipelab.catalog.store import Catalog, is_template_name, parse_caps
+from pipelab.catalog.store import Catalog, is_template_name
 from pipelab.graph.models import Graph, Node
 from pipelab.gst import Gst
+from pipelab.gst.caps import parse_caps
 
 _TOKEN = re.compile(r"%[uds]")
 
