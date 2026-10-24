@@ -3,14 +3,19 @@ import {
   type Edge,
 } from "@xyflow/react";
 import { useMemo } from "react";
-import type { ElementSummary, MonitorPipeline } from "../api/types";
+import type { ElementSummary, MonitorPipeline, MonitorStats } from "../api/types";
+import { formatBitrate, formatFps } from "../lib/format";
 import { useCatalogStore } from "../store/catalogStore";
 import { MonitorNode, type MonitorFlowNode } from "./MonitorNode";
 
 const nodeTypes = { monitor: MonitorNode };
 const FIT = { maxZoom: 1.1, padding: 0.08 };
 
-function buildNodes(pipeline: MonitorPipeline, byName: Record<string, ElementSummary>): MonitorFlowNode[] {
+function buildNodes(
+  pipeline: MonitorPipeline,
+  byName: Record<string, ElementSummary>,
+  stats: MonitorStats | null,
+): MonitorFlowNode[] {
   const sinks: Record<string, string[]> = {};
   const srcs: Record<string, string[]> = {};
   for (const edge of pipeline.edges) {
@@ -26,6 +31,7 @@ function buildNodes(pipeline: MonitorPipeline, byName: Record<string, ElementSum
       summary: node.factory_known ? byName[node.factory] : undefined,
       sinks: dedupe(sinks[node.id]),
       srcs: dedupe(srcs[node.id]),
+      latency: stats?.elements?.[node.id] ?? null,
     },
   }));
 }
@@ -34,17 +40,25 @@ function dedupe(pads: string[] | undefined): string[] {
   return pads ? [...new Set(pads)] : [];
 }
 
-function buildEdges(pipeline: MonitorPipeline): Edge[] {
-  return pipeline.edges.map((edge) => ({
-    id: edge.id,
-    source: edge.source,
-    target: edge.target,
-    sourceHandle: edge.source_pad,
-    targetHandle: edge.target_pad,
-    label: capsSummary(edge.caps),
-    labelShowBg: true,
-    className: "monitor-edge",
-  }));
+function buildEdges(pipeline: MonitorPipeline, stats: MonitorStats | null): Edge[] {
+  return pipeline.edges.map((edge) => {
+    const flow = stats?.edges?.[edge.id];
+    const active = !!flow && flow.fps > 0;
+    const label = flow
+      ? `${formatFps(flow.fps)} · ${formatBitrate(flow.bitrate)}`
+      : capsSummary(edge.caps);
+    return {
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      sourceHandle: edge.source_pad,
+      targetHandle: edge.target_pad,
+      label,
+      labelShowBg: true,
+      animated: active,
+      className: `monitor-edge${active ? " monitor-edge-active" : ""}`,
+    };
+  });
 }
 
 /** Shorten caps to the media type for the edge label; the full string is on the title. */
@@ -54,10 +68,10 @@ function capsSummary(caps: string | null): string | undefined {
   return media || undefined;
 }
 
-export function MonitorFlow({ pipeline }: { pipeline: MonitorPipeline }) {
+export function MonitorFlow({ pipeline, stats }: { pipeline: MonitorPipeline; stats: MonitorStats | null }) {
   const catalog = useCatalogStore((s) => s.byName);
-  const nodes = useMemo(() => buildNodes(pipeline, catalog), [pipeline, catalog]);
-  const edges = useMemo(() => buildEdges(pipeline), [pipeline]);
+  const nodes = useMemo(() => buildNodes(pipeline, catalog, stats), [pipeline, catalog, stats]);
+  const edges = useMemo(() => buildEdges(pipeline, stats), [pipeline, stats]);
 
   return (
     <ReactFlowProvider>

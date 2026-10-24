@@ -26,20 +26,38 @@ the result as code for your application.
   pipeline.
 - **Live monitor.** Reconstruct, read-only, the pipeline running inside another process on the
   machine — a command-line `gst-launch`, or an app in C, Rust or Python, even in another
-  container — and inspect it as a graph, with element states and negotiated caps.
+  container — and watch it flow, with the same throughput, latency and thread statistics as the
+  design mode.
 
 ## Live monitor
 
 The **Live monitor** (top of the pipelines page) lists the GStreamer processes on the machine and
 reconstructs the pipeline of the one you pick, read-only. It never modifies the observed pipeline.
 
-A graph is obtained in one of two ways:
+**Structure** (always) is obtained in one of two ways:
 
 - **No code change (dot-dir):** start the target with `GST_DEBUG_DUMP_DOT_DIR` set, and Pipelab
   reads the graph GStreamer dumps there — this works for pipelines started from the command line or
   from C, Rust or Python, and reaches dumps inside other containers.
 - **No restart (gdb):** Pipelab attaches with gdb and asks the live process to serialise its
   pipelines. This needs no environment variable but needs permission to ptrace the target.
+
+**Live statistics** — buffers/sec, bitrate, per-element and end-to-end latency, and the streaming
+threads, flowing on the graph like the design mode — need the pipeline to have been **launched with
+the GStreamer tracers** (they cannot be turned on after it starts). Launch your process with:
+
+```bash
+GST_TRACERS="stats;latency(flags=pipeline+element)" \
+GST_DEBUG=GST_TRACER:7 \
+GST_DEBUG_FILE=/path/pipelab-can-read.log \
+GST_DEBUG_DUMP_DOT_DIR=/path/dots \
+  your-application            # or gst-launch-1.0 …
+```
+
+Pipelab tails that log (through `/proc/<pid>/root`, so logs inside other containers work) and shows
+the statistics live. Without the tracers you still get structure, element states and caps, and the
+monitor tells you how to enable the rest. Previews of the media are not shown — that would require
+tapping the pipeline, which the monitor never does.
 
 By default the API only sees processes in its own container. To monitor the whole host, run it with
 the host PID namespace (and, for the gdb method, `CAP_SYS_PTRACE`):

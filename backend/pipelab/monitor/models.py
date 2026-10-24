@@ -68,3 +68,8 @@ class MonitorProcess(BaseModel):
     methods: list[Literal["gdb", "dot-dir"]] = Field(default_factory=list)
     dot_dir: str | None = None  # value of GST_DEBUG_DUMP_DOT_DIR, if set
     is_pipelab: bool = False  # one of our own worker processes
+    # Live-statistics capability: the process was launched with the GStreamer tracers whose log we
+    # can tail, so the monitor can show it flowing with per-link throughput and latencies.
+    tracers: list[str] = Field(default_factory=list)  # from GST_TRACERS
+    tracer_log: str | None = None  # readable GST_DEBUG_FILE carrying the tracer records
+    full_stats: bool = False  # tracers + a readable log → live stats are available

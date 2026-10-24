@@ -1,17 +1,23 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, errorMessage } from "../api/client";
-import type { MonitorPipeline, MonitorProcess } from "../api/types";
+import type { MonitorPipeline, MonitorProcess, MonitorStats } from "../api/types";
 import { Icon } from "../components/Icon";
 import { ThemeToggle } from "../components/ThemeToggle";
+import { formatMs } from "../lib/perf";
 import { MonitorFlow } from "../monitor/MonitorFlow";
 import { notify } from "../store/uiStore";
 
+const STATS_INTERVAL = 1000;
+const STRUCTURE_INTERVAL = 5000;
+
 export function MonitorPage() {
   const [processes, setProcesses] = useState<MonitorProcess[] | null>(null);
-  const [selected, setSelected] = useState<number | null>(null);
+  const [selected, setSelected] = useState<MonitorProcess | null>(null);
   const [pipeline, setPipeline] = useState<MonitorPipeline | null>(null);
+  const [stats, setStats] = useState<MonitorStats | null>(null);
   const [loading, setLoading] = useState(false);
+  const timers = useRef<number[]>([]);
 
   const refresh = useCallback(async () => {
     try {
@@ -26,18 +32,46 @@ export function MonitorPage() {
     void refresh();
   }, [refresh]);
 
-  const inspect = useCallback(async (process: MonitorProcess) => {
-    setSelected(process.pid);
-    setLoading(true);
-    setPipeline(null);
-    try {
-      setPipeline(await api.monitorSnapshot(process.pid, "auto"));
-    } catch (error) {
-      notify({ level: "error", title: `Could not read pid ${process.pid}`, message: errorMessage(error) });
-    } finally {
-      setLoading(false);
-    }
+  const clearTimers = useCallback(() => {
+    timers.current.forEach((id) => window.clearInterval(id));
+    timers.current = [];
   }, []);
+
+  useEffect(() => clearTimers, [clearTimers]);
+
+  const inspect = useCallback(
+    async (process: MonitorProcess) => {
+      clearTimers();
+      setSelected(process);
+      setLoading(true);
+      setPipeline(null);
+      setStats(null);
+      try {
+        const snapshot = await api.monitorSnapshot(process.pid, "auto");
+        setPipeline(snapshot);
+        setLoading(false);
+
+        // Keep the structure fresh (elements appearing/leaving, state changes).
+        timers.current.push(
+          window.setInterval(() => {
+            api.monitorSnapshot(process.pid, "auto").then(setPipeline).catch(() => undefined);
+          }, STRUCTURE_INTERVAL),
+        );
+        // Live statistics, if the process was launched with the GStreamer tracers.
+        if (process.full_stats) {
+          const poll = () => api.monitorLive(process.pid).then(setStats).catch(() => undefined);
+          void poll();
+          timers.current.push(window.setInterval(poll, STATS_INTERVAL));
+        }
+      } catch (error) {
+        setLoading(false);
+        notify({ level: "error", title: `Could not read pid ${process.pid}`, message: errorMessage(error) });
+      }
+    },
+    [clearTimers],
+  );
+
+  const live = selected?.full_stats && stats?.available;
 
   return (
     <div className="monitor-page">
@@ -73,7 +107,7 @@ export function MonitorPage() {
               {processes.map((process) => (
                 <li key={process.pid}>
                   <button
-                    className={`monitor-proc${selected === process.pid ? " selected" : ""}`}
+                    className={`monitor-proc${selected?.pid === process.pid ? " selected" : ""}`}
                     onClick={() => void inspect(process)}
                   >
                     <div className="monitor-proc-head">
@@ -86,6 +120,11 @@ export function MonitorPage() {
                       {process.container ? (
                         <span className="tag tag-container" title={`container ${process.container}`}>
                           {process.container.slice(0, 12)}
+                        </span>
+                      ) : null}
+                      {process.full_stats ? (
+                        <span className="tag tag-live" title="Launched with GStreamer tracers: full live stats">
+                          live stats
                         </span>
                       ) : null}
                       {process.methods.map((method) => (
@@ -107,12 +146,28 @@ export function MonitorPage() {
               <div className="monitor-meta">
                 <strong>{pipeline.name}</strong>
                 <span className="monitor-dim">
-                  {pipeline.nodes.length} elements · via {pipeline.source.method} ·{" "}
-                  {new Date(pipeline.source.captured_at).toLocaleTimeString()}
+                  {pipeline.nodes.length} elements · via {pipeline.source.method}
                 </span>
+                {live ? (
+                  <span className="monitor-live-pill"><span className="monitor-live-dot" /> live</span>
+                ) : null}
+                {live && stats?.end_to_end ? (
+                  <span className="monitor-dim">end-to-end latency {formatMs(stats.end_to_end.avg_ms)}</span>
+                ) : null}
               </div>
+              {selected && !selected.full_stats ? (
+                <div className="monitor-notice">
+                  <Icon name="info" size={15} />
+                  <span>
+                    Structure, element states and caps only. For live throughput, latencies and
+                    threads, launch this pipeline with{" "}
+                    <code>GST_TRACERS="stats;latency(flags=pipeline+element)"</code>,{" "}
+                    <code>GST_DEBUG=GST_TRACER:7</code> and a readable <code>GST_DEBUG_FILE</code>.
+                  </span>
+                </div>
+              ) : null}
               <div className="monitor-flow">
-                <MonitorFlow pipeline={pipeline} />
+                <MonitorFlow pipeline={pipeline} stats={live ? stats : null} />
               </div>
             </>
           ) : (

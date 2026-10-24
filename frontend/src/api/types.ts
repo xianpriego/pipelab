@@ -295,6 +295,9 @@ export interface MonitorProcess {
   methods: MonitorMethod[];
   dot_dir: string | null;
   is_pipelab: boolean;
+  tracers: string[];
+  tracer_log: string | null;
+  full_stats: boolean;
 }
 
 export interface MonitorNode {
@@ -334,4 +337,33 @@ export interface MonitorPipeline {
   source: MonitorSource;
   nodes: MonitorNode[];
   edges: MonitorEdge[];
+}
+
+export interface MonitorElementLatency {
+  avg_ms: number;
+  max_ms: number;
+  samples: number;
+}
+export interface MonitorEdgeStats {
+  buffers: number;
+  bytes: number;
+  fps: number;
+  bitrate: number;
+  pts?: number | null;
+}
+export interface MonitorThread {
+  id: number;
+  name: string;
+  cpu: number | null;
+  edges: string[];
+}
+export interface MonitorStats {
+  available: boolean;
+  reason?: string;
+  tracers?: string[];
+  time?: number;
+  edges?: Record<string, MonitorEdgeStats>;
+  elements?: Record<string, MonitorElementLatency>;
+  threads?: MonitorThread[];
+  end_to_end?: MonitorElementLatency | null;
 }

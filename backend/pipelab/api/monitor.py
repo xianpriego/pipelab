@@ -19,6 +19,7 @@ from pipelab.monitor.discover import describe_process, discover
 from pipelab.monitor.dot_parse import parse_dot
 from pipelab.monitor.dump import DumpError, dump_process
 from pipelab.monitor.graph_map import build_gtype_index, to_monitor_pipeline
+from pipelab.monitor.live import resolve_tracer_log
 from pipelab.monitor.models import MonitorPipeline, MonitorProcess, MonitorSource
 
 router = APIRouter()
@@ -61,7 +62,39 @@ def snapshot(request: SnapshotRequest, services: ServicesDep) -> MonitorPipeline
         method=method,  # type: ignore[arg-type]
         captured_at=datetime.now(UTC).isoformat(timespec="seconds"),
     )
-    return to_monitor_pipeline(parsed, source, index)
+    pipeline = to_monitor_pipeline(parsed, source, index)
+    # Teach the live tailer this snapshot's ids so subsequent /monitor/live polls can be mapped.
+    services.live_monitor.set_structure(request.pid, pipeline)
+    return pipeline
+
+
+@router.get("/monitor/live")
+def live(pid: int, services: ServicesDep) -> dict:
+    """Live statistics for a monitored pipeline over the interval since the previous call.
+
+    Returns `{available: false, reason}` when the process was not launched with the GStreamer
+    tracers (`GST_TRACERS` + `GST_DEBUG=GST_TRACER:7` + a readable `GST_DEBUG_FILE`); otherwise a
+    `stats`-shaped payload keyed by the ids of the latest snapshot.
+    """
+    process = describe_process(pid)
+    if process is None:
+        raise HTTPException(404, f"No GStreamer process with pid {pid} is visible.")
+    if not process.full_stats or not process.tracer_log:
+        return {
+            "available": False,
+            "reason": (
+                "This pipeline was not launched with the GStreamer tracers. For live statistics, "
+                'start it with GST_TRACERS="stats;latency", GST_DEBUG=GST_TRACER:7 and a readable '
+                "GST_DEBUG_FILE."
+            ),
+            "tracers": process.tracers,
+        }
+    log_path = resolve_tracer_log(pid, process.tracer_log)
+    if log_path is None:
+        return {"available": False, "reason": "The tracer log file is not readable from the API."}
+    stats = services.live_monitor.poll(pid, log_path)
+    stats["available"] = True
+    return stats
 
 
 def _gtype_index(services: Services) -> dict[str, str]:

@@ -193,6 +193,7 @@ A component is a reusable sub-graph in a global library (`/data/components/<id>.
 | GET, DELETE | `/media/{path}` | serve (with HTTP range support) / delete |
 | GET | `/monitor/processes` | `{processes: MonitorProcess[]}` — GStreamer processes visible to the API |
 | POST | `/monitor/snapshot` | `{pid, method}` → `MonitorPipeline` (read-only reconstruction) |
+| GET | `/monitor/live?pid=` | live `stats` over the interval since the last call, or `{available: false, reason}` |
 
 Response details:
 
@@ -291,6 +292,14 @@ so it can be inspected as a graph. It never modifies the observed pipeline.
 - `graph_map.py` maps the parsed pipeline onto the read-only `monitor/models.py` models, resolving
   each element's GObject type to a factory against this machine's catalog (so the monitor reuses the
   editor's node rendering) and placing nodes with the editor's `auto_layout`.
+- **Live statistics** (`live.py`, `tracer_parse.py`): when the process was launched with the
+  GStreamer tracers (`GST_TRACERS="stats;latency"` + `GST_DEBUG=GST_TRACER:7` +
+  `GST_DEBUG_FILE`), `discover.py` reports `full_stats`, and `LiveMonitor` tails that log (through
+  `/proc/<pid>/root`). Each `/monitor/live` poll aggregates the records written since the previous
+  poll into the same `stats` shape the editor streams — per-link `buffers/bytes/fps/bitrate`,
+  per-element latency, end-to-end latency, and the streaming threads with their CPU (read from
+  `/proc/<pid>/task/<tid>`). The poll interval is the measurement window. Tracers cannot be enabled
+  after a process has started, so a pipeline that was not launched with them shows structure only.
 
 `MonitorPipeline` = `{name, source, nodes: MonitorNode[], edges: MonitorEdge[]}`. A `MonitorNode` is
 `{id, name, gtype, factory, factory_known, state, is_bin, parent, properties, position}` and a

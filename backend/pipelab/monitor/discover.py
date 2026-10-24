@@ -115,6 +115,7 @@ def describe_process(pid: int) -> MonitorProcess | None:
     if dot_dir:
         methods.append("dot-dir")
     methods.append("gdb")
+    tracers, tracer_log, full_stats = _stats_capability(pid, env)
     return MonitorProcess(
         pid=pid,
         cmdline=cmdline,
@@ -125,7 +126,32 @@ def describe_process(pid: int) -> MonitorProcess | None:
         methods=methods,  # type: ignore[arg-type]
         dot_dir=dot_dir,
         is_pipelab="pipelab.runtime.worker" in cmdline,
+        tracers=tracers,
+        tracer_log=tracer_log,
+        full_stats=full_stats,
     )
+
+
+def _stats_capability(pid: int, env: dict[str, str]) -> tuple[list[str], str | None, bool]:
+    """Decide whether we can tail this process's tracer log for live statistics.
+
+    Needs ``GST_TRACERS`` (at least ``stats``), the ``GST_TRACER`` debug category enabled, and a
+    ``GST_DEBUG_FILE`` we can actually read (resolved through ``/proc/<pid>/root``).
+    """
+    raw_tracers = env.get("GST_TRACERS", "")
+    tracers = [t.split("(", 1)[0].strip() for t in raw_tracers.split(";") if t.strip()]
+    log = env.get("GST_DEBUG_FILE") or None
+    debug = env.get("GST_DEBUG", "")
+    tracer_debug_on = "GST_TRACER" in debug or debug.strip() in ("*:7", "7")
+    readable_log = None
+    if log and tracer_debug_on:
+        from pipelab.monitor.dump import _resolve_in_target
+
+        resolved = _resolve_in_target(pid, log)
+        if resolved.exists():
+            readable_log = log
+    full_stats = bool(tracers) and "stats" in tracers and readable_log is not None
+    return tracers, readable_log, full_stats
 
 
 def discover(include_self: bool = False) -> list[MonitorProcess]:

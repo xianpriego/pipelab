@@ -1,13 +1,15 @@
 import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
 import { memo, type CSSProperties } from "react";
 import { accentColor } from "../lib/elementKinds";
-import type { ElementSummary, MonitorNode as MonitorNodeModel } from "../api/types";
+import { formatMs } from "../lib/perf";
+import type { ElementSummary, MonitorElementLatency, MonitorNode as MonitorNodeModel } from "../api/types";
 
 export interface MonitorNodeData extends Record<string, unknown> {
   node: MonitorNodeModel;
   summary: ElementSummary | undefined;
   sinks: string[];
   srcs: string[];
+  latency: MonitorElementLatency | null;
 }
 
 export type MonitorFlowNode = Node<MonitorNodeData, "monitor">;
@@ -21,7 +23,7 @@ const STATE_LABEL: Record<string, string> = {
 };
 
 function MonitorNodeView({ data }: NodeProps<MonitorFlowNode>) {
-  const { node, summary, sinks, srcs } = data;
+  const { node, summary, sinks, srcs, latency } = data;
   const props = Object.entries(node.properties).slice(0, 4);
   return (
     <div
@@ -41,6 +43,12 @@ function MonitorNodeView({ data }: NodeProps<MonitorFlowNode>) {
       >
         {node.gtype}
       </div>
+      {latency ? (
+        <div className="monitor-node-latency" title={`time inside this element · max ${formatMs(latency.max_ms)}`}>
+          <span>latency</span>
+          <strong>{formatMs(latency.avg_ms)}</strong>
+        </div>
+      ) : null}
       {props.length ? (
         <dl className="monitor-node-props">
           {props.map(([key, value]) => (

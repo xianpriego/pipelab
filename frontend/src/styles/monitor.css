@@ -46,6 +46,36 @@
 .tag-method { font-family: var(--mono); }
 .tag-self { color: var(--primary); border-color: var(--primary); }
 .tag-container { color: var(--info); border-color: var(--info); font-family: var(--mono); }
+.tag-live { color: var(--success); border-color: var(--success); }
+
+.monitor-notice {
+  display: flex; align-items: flex-start; gap: 8px; padding: 8px 14px; font-size: 12px;
+  color: var(--text-muted); background: color-mix(in srgb, var(--info) 8%, var(--bg-panel));
+  border-bottom: 1px solid var(--border);
+}
+.monitor-notice code {
+  font-family: var(--mono); font-size: 11px; background: var(--bg-active); padding: 0 4px;
+  border-radius: 3px; color: var(--text);
+}
+.monitor-live-pill {
+  display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--success);
+  text-transform: uppercase; letter-spacing: 0.4px;
+}
+.monitor-live-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--success);
+  animation: monitor-pulse 1.4s ease-in-out infinite;
+}
+@keyframes monitor-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+.monitor-node-latency {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  padding: 3px 10px; border-top: 1px solid var(--border); font-size: 10.5px; color: var(--text-muted);
+}
+.monitor-node-latency span { font-family: var(--mono); color: var(--text-faint); }
+.monitor-node-latency strong { font-family: var(--mono); color: var(--text); }
+
+.monitor-edge-active .react-flow__edge-path { stroke: var(--success); stroke-width: 1.6; }
+.monitor-edge-active .react-flow__edge-text { fill: var(--success); }
 
 .monitor-canvas { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .monitor-meta {
