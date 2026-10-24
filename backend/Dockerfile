@@ -50,6 +50,15 @@ ENV VIRTUAL_ENV=/opt/venv \
 # --system-site-packages exposes the distro PyGObject (gi) to the venv.
 RUN python -m venv --system-site-packages ${VIRTUAL_ENV}
 
+# NVRTC, NVIDIA's runtime compiler (~60 MB, not the whole CUDA toolkit): nvcodec
+# compiles its CUDA kernels with it when it starts, otherwise cudaconvert,
+# cudascale, cudaconvertscale and cudacompositor are not registered. Harmless
+# without a GPU (nvcodec then registers nothing).
+ARG NVRTC_VERSION=12.9.86
+RUN pip install --no-cache-dir --target /opt/nvrtc nvidia-cuda-nvrtc-cu12==${NVRTC_VERSION}
+ENV GST_CUDA_NVRTC_LIBNAME=/opt/nvrtc/nvidia/cuda_nvrtc/lib/libnvrtc.so.12 \
+    LD_LIBRARY_PATH=/opt/nvrtc/nvidia/cuda_nvrtc/lib
+
 WORKDIR /app
 COPY requirements.txt requirements-dev.txt ./
 RUN pip install --no-cache-dir -r requirements.txt -r requirements-dev.txt

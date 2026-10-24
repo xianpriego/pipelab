@@ -27,6 +27,13 @@ Requisitos: Docker con Compose v2. Para la GPU, driver NVIDIA y NVIDIA
 Container Toolkit en el host. La primera vez el backend introspecciona todo el
 registro de GStreamer (unos segundos) y lo cachea en `data/cache`.
 
+Con `GPU=1` está todo `nvcodec`: decodificadores y codificadores NVDEC/NVENC
+(`nvh264dec`, `nvh265enc`…), `cudaupload`/`cudadownload` y los filtros que
+trabajan sin sacar el vídeo de la GPU (`cudaconvertscale`, `cudaconvert`,
+`cudascale`, `cudacompositor`; la imagen incluye NVRTC para compilarlos). Los
+elementos se registran según la tarjeta: p. ej. AV1 (`nvav1enc`/`nvav1dec`)
+solo aparece en GPUs que lo soportan por hardware (RTX 30/40 o superiores).
+
 Los datos viven en `./data`: `projects/` (un JSON por espacio de trabajo),
 `media/` (ficheros de entrada y salida de las pipelines) y `cache/`.
 
